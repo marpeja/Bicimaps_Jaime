@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <EditText
+        android:id="@+id/latitud"
+        android:hint="Introduce latitud"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+    <EditText
+        android:id="@+id/longitud"
+        android:hint="Introduce longitud"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+    <EditText
+        android:id="@+id/pm"
+        android:hint="Introduce pm"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+    <EditText
+        android:id="@+id/mac"
+        android:hint="Introduce mac"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+    <Button
+        android:id="@+id/enviar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Enviar info"
+        android:onClick="Enviar"
+        android:textAlignment="center"/>
+    <Button
+        android:id="@+id/recibir"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Recibir info"
+        android:onClick="Recibir"
+        android:textAlignment="center"/>
+    <Button
+        android:id="@+id/stop"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Parar envio"
+        android:onClick="Recibir"
+        android:textAlignment="center"/>
+
+</LinearLayout>

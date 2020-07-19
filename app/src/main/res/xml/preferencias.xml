@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <ListPreference
+        android:key="profile"
+        android:title="Perfil de contaminación"
+        android:summary="Limita la contaminación admitida por la ruta alternativa"
+        android:entries="@array/perfilContaminacion"
+        android:entryValues="@array/perfilContaminacionValores"
+        android:defaultValue="0"/>
+    <EditTextPreference
+        android:key="max_places"
+        android:title="Máximo número de lugares favoritos"
+        android:summary="Limita el número de lugares favoritos que se puedan definir. Por defecto son 4"
+        android:inputType="number"
+        android:defaultValue="4"/>
+</PreferenceScreen>

@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:showIn="navigation_view">
+
+    <group android:checkableBehavior="single">
+        <item android:title="Mapa">
+            <menu>
+        <item
+            android:id="@+id/map_normal"
+            android:icon="@android:drawable/ic_menu_mapmode"
+            android:title="Normal" />
+        <item
+            android:id="@+id/contamination_history"
+            android:icon="@android:drawable/ic_menu_sort_by_size"
+            android:title="Historial contaminación" />
+        <item
+            android:id="@+id/contaminacionmap"
+            android:icon="@android:drawable/ic_menu_close_clear_cancel"
+            android:title="@string/contaminacion"
+            android:iconTint="@color/colorPrimary"
+            android:checkable="true"
+            android:checked="true"/>
+
+            </menu>
+        </item>
+    </group>
+
+    <group android:checkableBehavior="single">
+        <item android:title="@string/usuario">
+            <menu>
+                <item
+                    android:id="@+id/perfil"
+                    android:icon="@android:drawable/ic_menu_info_details"
+                    android:title="@string/perfil" />
+                <item
+                    android:id="@+id/mis_rutas"
+                    android:icon="@android:drawable/ic_menu_my_calendar"
+                    android:title="@string/caminos" />
+                <item
+                    android:id="@+id/fav"
+                    android:icon="@android:drawable/star_off"
+                    android:title="@string/fav" />
+
+            </menu>
+        </item>
+    </group>
+
+    <group android:checkableBehavior="single">
+        <item android:title="@string/ajustes">
+            <menu>
+                <item
+                    android:id="@+id/tutorial_menu"
+                    android:icon="@android:drawable/ic_menu_help"
+                    android:title="@string/tutorial" />
+                <item
+                    android:id="@+id/configuración"
+                    android:icon="@android:drawable/ic_menu_manage"
+                    android:title="@string/configuracion" />
+
+                <item
+                    android:id="@+id/sign_out"
+                    android:icon="@android:drawable/presence_offline"
+                    android:title="Cerrar sesión" />
+
+            </menu>
+        </item>
+    </group>
+
+</menu>

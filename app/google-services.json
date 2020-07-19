@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "882915298971",
+    "firebase_url": "https://osmdroid-caf59.firebaseio.com",
+    "project_id": "osmdroid-caf59",
+    "storage_bucket": "osmdroid-caf59.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:882915298971:android:10ebde1c8c825e4a24c03e",
+        "android_client_info": {
+          "package_name": "com.example.osmdroid"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "882915298971-n002ee1rcqq8r9s4v7olpd6vq9it17sg.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.osmdroid",
+            "certificate_hash": "81202ed9366f819c38fca752567b2ef4f6277456"
+          }
+        },
+        {
+          "client_id": "882915298971-9358c278nlqu9no1upd4lfvqk93ft9vk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTs5ja3hIBnOF7CBhywDYbrEzXrv5LuOs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "882915298971-9358c278nlqu9no1upd4lfvqk93ft9vk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
