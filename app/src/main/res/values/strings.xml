@@ -32,6 +32,9 @@
     <string name="exit_account">Cerrar sesión</string>
     <string name="delete_account">Eliminar cuenta</string>
 
+    <!-- OPENROUTESERVICE -->
+    <string name="open_route_service_API">5b3ce3597851110001cf624890308d3cb7c049128b59d2b81071846d</string>
+
     <!-- CALLLES -->
     <string-array name="madrid_streets">
 

@@ -8,15 +8,6 @@ public class Punto implements Serializable {
     private double longitud;
     private double pm;
     private String user;
-
-    public String getTime() {
-        return time;
-    }
-
-    public void setTime(String time) {
-        this.time = time;
-    }
-
     private String mac;
     private String time;
 
@@ -69,6 +60,14 @@ public class Punto implements Serializable {
 
     public void setUser(String user) {
         this.user = user;
+    }
+
+    public String getTime() {
+        return time;
+    }
+
+    public void setTime(String time) {
+        this.time = time;
     }
 
 }

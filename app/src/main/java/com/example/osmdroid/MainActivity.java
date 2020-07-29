@@ -12,7 +12,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Paint;
-import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -56,6 +55,7 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
+import com.example.osmdroid.Bluetooth.BluetoothActivity;
 import com.example.osmdroid.Datos.AutoSuggestAdapter;
 import com.example.osmdroid.Modelo.GeocoderNominatimMod;
 import com.example.osmdroid.Modelo.Punto;
@@ -167,6 +167,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                                        //A veces cuando se cambia de usuario, detecta ENFOQUE, y despliega el historial
                                        //para evitarlo, hacemos que unicamente se despliegue con el primer enfoque.
 
+
     //INTERFACE
     private TextView userEmailView;
     private TextView userNameView;
@@ -203,6 +204,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
     private MapView map;
     private IMapController mapController;
     private Bitmap icon;
+    private NavigationView navigationView;
 
     //OVERLAYS
     private MapEventsOverlay mEventsOverlay;
@@ -215,7 +217,6 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
     private GpsMyLocationProvider myLocationProvider;
     private GeoPoint myLocation;
     private GeoPoint myLastLocation;
-    private boolean positionChanged;
 
     //HEATMAP
     private ArrayList<Punto> points;
@@ -282,7 +283,6 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         //handle permissions first, before map is created. not depicted here
 
         requestPermissionsIfNecessary(new String[] {
-                // if you need to show the current location, uncomment the line below
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 // WRITE_EXTERNAL_STORAGE is required in order to show the map
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -316,27 +316,43 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         drawer.addDrawerListener(toogle);
         toogle.syncState();
 
-        NavigationView navigationView = findViewById(R.id.navigation_view);
+        navigationView = findViewById(R.id.navigation_view);
         navigationView.setNavigationItemSelectedListener(this);
 
-        //////////
-        //MAP
-        //////////
-        //Creamos mapa. Habilitamos multiTouch.
+        //////////////////
+        //MAP AND LAYERS
+        //////////////////
+        //Creamos mapa. Habilitamos multiTouch, creamos un controlador del mapa y fijamos un zoom de inicio.
         map = findViewById(R.id.map);
         map.setUseDataConnection(true);
         map.setTileSource(TileSourceFactory.MAPNIK);
         map.setMultiTouchControls(true);
+        mapController = map.getController();
+        mapController.setZoom(14);
 
         //Capa con los puntos de contaminacion. La ponemos la primera, para que este por debajo siempre. Si la
         //pusieramos por encima de la de eventos, detectaria pulsación en los circulos y no en el propio mapa
-        //por lo que no se ejcutaría onLongPress, y sí el onClick asociado al circulo
+        //por lo que no se ejcutaría onLongPress, y sí el onClick asociado al circulo si hubiera alguno
         contaminationLayer = new FolderOverlay();
-        map.getOverlays().add( contaminationLayer);
 
 
-        mapController = map.getController();
-        mapController.setZoom(14);
+        //Se mostrará la capa de contaminación en caso de que el usuario tenga marcada su visualización (la cual
+        //está marcada por defecto). Si la desactiva, entonces ya no se mostrará hasta que el usuario lo decida.
+        SharedPreferences app = getSharedPreferences("app", Context.MODE_PRIVATE);
+        boolean isHeatMapEnabled = app.getBoolean("contaminationMap", true);
+        if(isHeatMapEnabled) {
+            map.getOverlays().add(0, contaminationLayer);
+            if(!navigationView.getMenu().findItem(R.id.contaminacionmap).isChecked()){
+                navigationView.getMenu().findItem(R.id.contaminacionmap).setChecked(true);
+            }
+        } else {
+            if(navigationView.getMenu().findItem(R.id.contaminacionmap).isChecked()){
+                navigationView.getMenu().findItem(R.id.contaminacionmap).setChecked(false);
+            }
+
+        }
+
+        //Capa de rotación, para poder rotar el mapa,
         RotationGestureOverlay mRotationGestureOverlay = new RotationGestureOverlay(map);
         mRotationGestureOverlay.setEnabled(true);
         map.getOverlayManager().add(mRotationGestureOverlay);
@@ -345,22 +361,15 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         mEventsOverlay = new MapEventsOverlay(this);
         map.getOverlays().add(mEventsOverlay);
 
-        //Capa de Marcadores en el mapa. Por encima de la de eventos
+        //Capa de Marcadores en el mapa. Contendrá el marcador de origen y destino.
         markers = new FolderOverlay();
         map.getOverlays().add(markers);
 
 
-       //Iniciamos mapa en el centro de Madrid. Habilitamos rotación y multitouch.
-        //GeoPoint startPoint = new GeoPoint(40.4167, -3.7);
-        /*mapController = map.getController();
-        mapController.setZoom(14);
-        RotationGestureOverlay mRotationGestureOverlay = new RotationGestureOverlay(map);
-        mRotationGestureOverlay.setEnabled(true);
-        map.getOverlayManager().add(mRotationGestureOverlay);*/
-        //mapController.setCenter(startPoint);
-
-
-        //Capa de ubicación del usuario. La última en añadirse, para que siempre sea visible nuestra ubicación
+        //Capa de ubicación del usuario. La última en añadirse, para que siempre sea visible nuestra ubicación.
+        //La localización se obtiene usando las herramientas de OSMDroid, pero tambien se podría usar FusedLocation de Google
+        //cuyo código esta comentado. En caso de que el nuevo programador prefiera esta opción, descomentar dicho código y comentar
+        //el de osmdroid.
         ////////////////////////////////////////////////////////////////////////////
         ////////////////////////////////////////////////////////////////////////////
         /*locationCallback = new LocationCallback(){
@@ -424,56 +433,397 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 myLocation = new GeoPoint(locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER));
                 mapController.setCenter(myLocation);
             } else {
-                myLocation = new GeoPoint(40.4147,-3.7004);
-                mapController.setCenter(myLocation);
+                myLocation = new GeoPoint(40.416724,-3.703493); //En caso de que no se conozca última ubicación,
+                mapController.setCenter(myLocation);                                //se fija esta en el centro de Madrid
             }
             //Cambiamos el icono de ubicación
 
-            BitmapDrawable drawable = (BitmapDrawable) getResources().getDrawable(R.drawable.ic_bike);
             icon = BitmapFactory.decodeResource(
                     MainActivity.this.getResources(), R.drawable.ic_bike);
             myLocationNewOverlay.setDirectionArrow(icon, icon);
             myLocationNewOverlay.setPersonHotspot(24.0f * map.getContext().getResources().getDisplayMetrics().density + 0.5f,39.0f * map.getContext().getResources().getDisplayMetrics().density + 0.5f);
         }
 
+        //////////////
+        //INTERFAZ
+        //////////////
+
+        mode = Mode.EMPTY; //Modo de la aplicación del que se parte
+
+        userEmailView = navigationView.getHeaderView(0).findViewById(R.id.userEmail); //Correo y nombre de usuario que se verá
+        userNameView = navigationView.getHeaderView(0).findViewById(R.id.userName);   //en el menú lateral.
+
+        origin = findViewById(R.id.origin);
+        destination = findViewById(R.id.destination);
+        clear_origin = findViewById(R.id.clear_origin);
+        clear_destination = findViewById(R.id.clear_destination);
+        swap = findViewById(R.id.swap);
+        signal = findViewById(R.id.signal);
+        instructions = findViewById(R.id.instructions);
+        distance = findViewById(R.id.distance);
+        time = findViewById(R.id.time);
+        modeChanger = findViewById(R.id.modeChanger);
+        myLocationBtn = findViewById(R.id.myLocation);
+        bluetoothSelection = findViewById(R.id.btSelector);
+        road1 = findViewById(R.id.road1);
+        road2 = findViewById(R.id.road2);
+
+        clear_origin.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                origin.setText("");
+            }
+        });
+
+        clear_destination.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                destination.setText("");
+            }
+        });
+
+        //Inicialización de adaptadores AutoSuggestTextView
+        String[] streets = getResources().getStringArray(R.array.madrid_streets);
+        adapterStreets = new AutoSuggestAdapter<String>(this, R.layout.autocompletestreets_layout, R.id.autoCompleteStreets, new LinkedList<String>(Arrays.asList(streets)));
+        String[] newAddresses = updatePlaces(new String[]{"Tu ubicación"});
+        adapterHistory = new ArrayAdapter<>(this, R.layout.autocompletehistory_layout, R.id.autoCompleteHistory, newAddresses);
 
 
+        origin.setAdapter(adapterHistory);
+        destination.setAdapter(adapterStreets);
+
+
+        modeChanger.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                switch (mode){
+                    case VIEW:
+                        if(origin.getText().toString() != null && myLocationNewOverlay.getMyLocation() != null && destinationMarker.getSnippet() != null) {
+                            modeChanger.setImageResource(R.drawable.ic_directions);
+                            mode = Mode.ROUTES;
+
+                            if (!search)
+                                updateHistory(destinationMarker.getSnippet());
+
+                            destination.setVisibility(View.VISIBLE);
+                            destination.setText(origin.getText().toString());
+                            origin.setText("Tu ubicación");
+                            road1.setVisibility(VISIBLE);
+                            road2.setVisibility(VISIBLE);
+                            swap.setVisibility(VISIBLE);
+                            getRoadAsync(myLocationNewOverlay.getMyLocation(), destinationMarker.getPosition());
+                        } else {
+                            Toast.makeText(MainActivity.this, "TERMINANDO DE CONFIGURAR, ESPERE UN MOMENTO", Toast.LENGTH_LONG).show();
+                        }
+                        break;
+                    case ROUTES:
+                        if(mRoadOverlays != null){
+                            if(MAC != null && !MAC.isEmpty()) {
+                                Log.i("ENTROOOOOOOOOOOO", "1");
+                                Intent newIntent = new Intent(MainActivity.this,BluetoothService.class);
+                                newIntent.putExtra("PM", start_PM);
+                                startService(newIntent);
+                            } /*else {
+                            Toast.makeText(MainActivity.this, "Conéctese al sensor via Bluetooth, por favor", Toast.LENGTH_SHORT).show();
+                            break;
+                        }*/
+                            mode = Mode.NAVIGATION;
+
+                            getSupportActionBar().hide();
+                            modeChanger.setVisibility(View.INVISIBLE);
+                            myLocationBtn.setVisibility(View.INVISIBLE);
+                            bluetoothSelection.setVisibility(View.INVISIBLE);
+
+                            myLocationNewOverlay.enableFollowLocation();
+                            if(map.getOverlays().contains(contaminationLayer)) {
+                                map.getOverlays().remove(contaminationLayer);
+                            }
+                            mEventsOverlay.setEnabled(false);
+
+                            for(int i = 0; i < mRoadOverlays.length; i++){
+                                if(mRoadOverlays[i] != null) {
+                                    mRoadOverlays[i].setInfoWindow(null);
+                                    mRoadOverlays[i].setOnClickListener(null);
+                                    if (i != selectedRoad) {
+                                        mRoadOverlays[i].setVisible(false);
+                                    }
+                                }
+                            }
+
+                            mapController.animateTo(myLocationNewOverlay.getMyLocation(), (double)20, (long)5);
+
+
+                            signal.setVisibility(View.VISIBLE);
+                            instructions.setVisibility(View.VISIBLE);
+                            distance.setVisibility(View.VISIBLE);
+                            time.setVisibility(VISIBLE);
+
+                            instructions.setText(mRoads[selectedRoad].mNodes.get(1).mInstructions);
+                            signal.setImageResource(signalSelection(mRoads[selectedRoad].mNodes.get(1).mManeuverType));
+                            distance.setText(distanceText(mRoads[selectedRoad].mNodes.get(0).mLength));
+                            mTime = mRoads[selectedRoad].mDuration;
+                            time.setText(getRoadTime(mTime));
+
+                            Log.i("DURACION_RUTA", Math.round(mTime)+"");
+
+                            instructionsThread = new UpdateInstructions();
+                            instructionsThread.start();
+                        } else {
+                            Toast.makeText(MainActivity.this, "Calculando rutas. Espere por favor.", Toast.LENGTH_SHORT).show();
+                        }
+                        break;
+                    default:
+                }
+            }
+        });
+
+        myLocationBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if(myLocationNewOverlay.getMyLocation() != null) {
+                    mapController.setCenter(myLocationNewOverlay.getMyLocation());
+                } else {
+                    mapController.setCenter(myLocation);
+                }
+                if(map.getZoomLevelDouble() < 14)
+                    mapController.setZoom(14);
+                map.setMapOrientation(0.0f);
+            }
+        });
+
+        bluetoothSelection.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, BluetoothActivity.class);
+                startActivityForResult(intent, BLUETOOTH_ACTIVITY);
+                /*Intent intent = new Intent(MainActivity.this, UpdateFirebase.class);
+                intent.putExtra("user", userEmail);
+                startActivity(intent);
+                for(int i = 0; i< map.getOverlays().size(); i++){
+                    Log.i("CAAAAAPAAAAS", i+" "+map.getOverlays().get(i));
+                }*/
+            }
+        });
+
+        configureListeners(origin);
+        configureListeners(destination);
+
+        origin.setInputType(EditorInfo.TYPE_TEXT_VARIATION_FILTER);
+        origin.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+
+        destination.setInputType(EditorInfo.TYPE_TEXT_VARIATION_FILTER);
+        destination.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+
+        editorListener = new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                //Oculta el teclado cuando se le da al enter
+                if(event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                    InputMethodManager in = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    in.hideSoftInputFromWindow(v.getWindowToken(),
+                            InputMethodManager.HIDE_NOT_ALWAYS);
+                }
+
+                //Entrada de texto en origen
+                if(v == origin && actionId == EditorInfo.IME_ACTION_SEARCH){
+                    //Toast.makeText(MainActivity.this, "PULSANDO EN INICIO", Toast.LENGTH_SHORT).show();
+
+                    String locationAddress = origin.getText().toString();
+
+                    locationAddress = isFavPlace(locationAddress);//Comprueba si se ha pulsado un lugar favorito, para obtener su dirección.
+
+                    if (locationAddress.equals("")){
+                        Toast.makeText(MainActivity.this, "Por favor, introduzca una dirección", Toast.LENGTH_SHORT).show();
+                        return false;
+                    }
+
+
+                    if(destination.getVisibility() == GONE){
+                        new GeocodingTask().execute(locationAddress, DEST_INDEX, map.getBoundingBox());
+                        search = true;
+                    } else if (destination.getVisibility() == View.VISIBLE){
+                        if(!locationAddress.equals("Tu ubicación")) {
+                            new GeocodingTask().execute(locationAddress, START_INDEX, map.getBoundingBox());
+                        } else {
+                            if(originMarkerON){
+                                markers.remove(originMarker);
+                                originMarkerON = false;
+                            }
+                            getRoadAsync(myLocationNewOverlay.getMyLocation(), destinationMarker.getPosition());
+                        }
+
+                    }
+                }
+
+                //Entrada de texto en destino
+                if(v == destination && actionId == EditorInfo.IME_ACTION_SEARCH){
+                    //Toast.makeText(MainActivity.this, "PULSANDO EN FINAL", Toast.LENGTH_SHORT).show();
+
+                    String locationAddress = destination.getText().toString();
+
+                    locationAddress = isFavPlace(locationAddress);
+
+                    if (locationAddress.equals("")){
+                        Toast.makeText(MainActivity.this, "FINAL VACIO", Toast.LENGTH_SHORT).show();
+                        return false;
+                    }
+
+
+                    if(!locationAddress.equals("Tu ubicación")) {
+                        new GeocodingTask().execute(locationAddress, DEST_INDEX, map.getBoundingBox());
+                    } else {
+                        if(destinationMarkerON){
+                            markers.remove(destinationMarker);
+                            destinationMarkerON = false;
+                        }
+                        if(originMarkerON)
+                            getRoadAsync(originMarker.getPosition(), myLocationNewOverlay.getMyLocation());
+                    }
+
+                }
+                return false;
+            }
+        };
+
+        road1.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.i("CLIIIICKES", "ROAD1");
+                selectedRoad = 0;
+                selectRoad(0);
+            }
+        });
+
+        road2.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Log.i("CLIIIICKES", "ROAD2");
+                selectedRoad = 1;
+                selectRoad(1);
+            }
+        });
+
+        swap.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //
+                if(origin.getText().toString().equals("Tu ubicación")){
+                    originMarker.setPosition(myLocation);
+                    Log.i("COMPROBACION_SWAP", "ENTRO");
+                }
+
+                if(destination.getText().toString().equals("Tu ubicación")){
+                    destinationMarker.setPosition(myLocation);
+                }
+                //Cambiamos textos.
+                String text_aux = origin.getText().toString();
+                origin.setText(destination.getText().toString());
+                destination.setText(text_aux);
+
+                //Cambiamos posiciones de los marcadores.
+                GeoPoint point_aux = originMarker.getPosition();
+                originMarker.setPosition(destinationMarker.getPosition());
+                destinationMarker.setPosition(point_aux);
+
+                Log.i("COMPROBACION_SWAP", myLocation +" "+ destinationMarker.getPosition());
+                Log.i("COMPROBACION_SWAP", destinationMarker.getPosition().getLatitude()+ " "+destinationMarker.getPosition().getLongitude());
+                if(!originMarkerON) {
+                    markers.add(originMarker);
+                    originMarkerON = true;
+                }
+                if(originMarkerON && originMarker.getPosition().getLatitude() == myLocation.getLatitude() &&
+                        originMarker.getPosition().getLongitude() == myLocation.getLongitude()){
+                    markers.remove(originMarker);
+                    originMarkerON = false;
+                }
+                if(!destinationMarkerON) {
+                    markers.add(destinationMarker);
+                    destinationMarkerON = true;
+                }
+                if (destinationMarkerON && destinationMarker.getPosition().getLatitude() == myLocation.getLatitude() &&
+                        destinationMarker.getPosition().getLongitude() == myLocation.getLongitude()){
+                    markers.remove(destinationMarker);
+                    destinationMarkerON = false;
+                }
+
+                getRoadAsync(originMarker.getPosition(), destinationMarker.getPosition());
+            }
+        });
+
+        origin.setOnEditorActionListener(editorListener);
+        destination.setOnEditorActionListener(editorListener);
+
+
+        destinationMarker = new Marker(map);
+        destinationMarker.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_location, null));
+        destinationMarker.setAnchor(Marker.ANCHOR_CENTER,Marker.ANCHOR_BOTTOM);
+
+        originMarker = new Marker(map);
+        originMarker.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_location, null));
+        originMarker.setAnchor(Marker.ANCHOR_CENTER,Marker.ANCHOR_BOTTOM);
+
+        formato = new DecimalFormat("#.##");
+
+
+
+        //////////////
+        //HANDLER
+        //////////////
         //Handler de mensajes de MainActivity.
-        //Con el msg 14, removemos todos los puntos del HeatMap y añadimos los nuevos. VER FOLDEROVERLAY
+        //Permitirá actualizar la interfaz desde los distintos hilos.
         handler = new Handler(new Handler.Callback() {
             @Override
             public boolean handleMessage(@NonNull Message msg) {
                 if(msg.arg1 == HandlerInstruction.UPDATE_DISTANCE.getValue()){
                     Log.i("MAPAAAS_HANDLER", "DURACION");
-                    //Toast.makeText(MainActivity.this, "DURACION", Toast.LENGTH_SHORT).show();
                     distance.setText(updateDistance(distance.getText().toString(), msg.arg2));
-
                 }
+
+                if(msg.arg1 == HandlerInstruction.UPDATE_TIME.getValue()){
+                    Log.i("MAPAAAS_HANDLER", "TIEMPO PRE " + mTime);
+                    //mTime = mTime - (double)msg.obj;
+                    //int time = (int) Math.round(mTime);
+                    if(msg.arg2 == 60) {
+                        mTime = mTime - 1;
+                        Log.i("MAPAAAS_HANDLER", "TIEMPO - 1min");
+                    } else {
+                        mTime = (mTime*60 - msg.arg2)/60;
+                        Log.i("MAPAAAS_HANDLER", "TIEMPO - no 1 min");
+                    }
+                    time.setText(getRoadTime(mTime));
+                    Log.i("MAPAAAS_HANDLER", "TIEMPO POST " + mTime);
+                }
+
                 if(msg.arg1 == HandlerInstruction.APPROACH_NODE.getValue()){
                     Log.i("MAPAAAS_HANDLER", "APROXIMACION");
 
                     distance.setText("");
-                    //Toast.makeText(MainActivity.this, "APROXIMACION", Toast.LENGTH_SHORT).show();
                 }
+
                 if(msg.arg1 == HandlerInstruction.REACH_NODE.getValue()){
                     Log.i("MAPAAAS_HANDLER", "LLEGADA");
                     instructions.setText(mRoads[selectedRoad].mNodes.get(msg.arg2 + 2).mInstructions);
                     signal.setImageResource(signalSelection(mRoads[selectedRoad].mNodes.get(msg.arg2 + 2).mManeuverType));
-                    distance.setText(distance(mRoads[selectedRoad].mNodes.get(msg.arg2 + 1).mLength));
-                    //Toast.makeText(MainActivity.this, "LLEGADA", Toast.LENGTH_SHORT).show();
+                    distance.setText(distanceText(mRoads[selectedRoad].mNodes.get(msg.arg2 + 1).mLength));
+                }
+
+                if(msg.arg1 == HandlerInstruction.REACH_END.getValue()){
+                    Toast.makeText(MainActivity.this, "HA LLEGADO A SU DESTINO", Toast.LENGTH_SHORT).show();
+                    distance.setText("0 m");
+                    time.setText("0 min");
                 }
 
                 if(msg.arg1 == HandlerInstruction.RECALCULATE.getValue()){
-                    Toast.makeText(MainActivity.this, "RECALCULANDO RECORRIDO", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "RECALCULANDO RECORRIDO "+ instructionsThread.isAlive(), Toast.LENGTH_SHORT).show();
                     lost = true;
                     getRoadAsync(myLocation, destinationMarker.getPosition());
                 }
 
                 if(msg.arg1 == HandlerInstruction.REROUTE.getValue()){
-                    //Toast.makeText(MainActivity.this, ""+ instructionsThread.isAlive(), Toast.LENGTH_SHORT).show();
+                    Log.i("MAPAAAS_HANDLER", "REROUTE InstructionsThread"+ instructionsThread.isAlive());
                     instructions.setText(mRoads[selectedRoad].mNodes.get(1).mInstructions);
                     signal.setImageResource(signalSelection(mRoads[selectedRoad].mNodes.get(1).mManeuverType));
-                    distance.setText(distance(mRoads[selectedRoad].mNodes.get(0).mLength));
+                    distance.setText(distanceText(mRoads[selectedRoad].mNodes.get(0).mLength));
                     mTime = mRoads[selectedRoad].mDuration;
                     time.setText(getRoadTime(mTime));
 
@@ -482,14 +832,10 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 }
 
                 if(msg.arg1 == HandlerInstruction.HEATMAP.getValue()){
-                    Log.i("TAMAÑO_CONTAMINACION_PR", contaminationLayer.getItems().size()+"");
                     int size = contaminationLayer.getItems().size();
                     for(int i = size - 1; i > -1; i--){
-                        Log.i("TAMAÑO_CONTAMINACION_B", i+" ");
                         contaminationLayer.remove(contaminationLayer.getItems().get(i));
-                        Log.i("TAMAÑO_CONTAMINACION_BP", contaminationLayer.getItems().size()+" ");
                     }
-                    Log.i("TAMAÑO_CONTAMINACION_A", contaminationLayer.getItems().size()+"");
                     for(Punto v : greens){
                         Marker marker = new Marker(map);
                         marker.setOnMarkerClickListener(null);
@@ -534,362 +880,18 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                         marker.setAlpha((float)0.4);
                         contaminationLayer.add(marker);
                     }
-                    Log.i("TAMAÑO_CONTAMINACION_PT", contaminationLayer.getItems().size()+"");
-                    for(int i=0; i< map.getOverlays().size(); i++){
+                    Log.i("MAPAAAS_HANDLER", "TAMAÑO_CONTAMINACION " + contaminationLayer.getItems().size());
+                    /*for(int i=0; i< map.getOverlays().size(); i++){
                         Log.i("MAPAAAS", map.getOverlays().get(i).toString());
-                    }
+                    }*/
                     map.invalidate();
 
-
-                }
-                if(msg.arg1 == HandlerInstruction.UPDATE_TIME.getValue()){
-                    Log.i("TIEEEEEMPO", mTime+"");
-                    //mTime = mTime - (double)msg.obj;
-                    //int time = (int) Math.round(mTime);
-                    if(msg.arg2 == 60) {
-                        mTime = mTime - 1;
-                        Log.i("TIEEEEEMPO_ACT", mTime+"");
-                    } else {
-                        mTime = (mTime*60 - msg.arg2)/60;
-                    }
-                    time.setText(getRoadTime(mTime));
-                    //Log.i("TIEEEEEMPO_ACT", mTime+"");
                 }
 
-                if(msg.arg1 == HandlerInstruction.REACH_END.getValue()){
-                    Toast.makeText(MainActivity.this, "HA LLEGADO A SU DESTINO", Toast.LENGTH_SHORT).show();
-                }
                 return false;
             }
         });
 
-        //////////////
-        //INTERFAZ
-        //////////////
-
-        mode = Mode.EMPTY;
-
-        userEmailView = navigationView.getHeaderView(0).findViewById(R.id.userEmail);
-        userNameView = navigationView.getHeaderView(0).findViewById(R.id.userName);
-
-        origin = findViewById(R.id.origin);
-        destination = findViewById(R.id.destination);
-        clear_origin = findViewById(R.id.clear_origin);
-        clear_destination = findViewById(R.id.clear_destination);
-        swap = findViewById(R.id.swap);
-        signal = findViewById(R.id.signal);
-        instructions = findViewById(R.id.instructions);
-        distance = findViewById(R.id.distance);
-        time = findViewById(R.id.time);
-        modeChanger = findViewById(R.id.modeChanger);
-        myLocationBtn = findViewById(R.id.myLocation);
-        bluetoothSelection = findViewById(R.id.btSelector);
-        road1 = findViewById(R.id.road1);
-        road2 = findViewById(R.id.road2);
-
-        clear_origin.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                origin.setText("");
-            }
-        });
-
-        clear_destination.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                destination.setText("");
-            }
-        });
-
-        //Inicialización de adaptadores AutoSuggestTextView
-        String[] streets = getResources().getStringArray(R.array.madrid_streets);
-        adapterStreets = new AutoSuggestAdapter<String>(this, R.layout.autocompletestreets_layout, R.id.autoCompleteStreets, new LinkedList<String>(Arrays.asList(streets)));
-        /*String[] history = {"Tu ubicación"};
-        String[] historyAct = addFavPlaces(history);*/
-        String[] newAddresses = updatePlaces(new String[]{"Tu ubicación"});
-        for(int i = 0; i < newAddresses.length; i++){
-            Log.i("NEW_ADDRESSES_P", newAddresses[i]);
-        }
-
-        adapterHistory = new ArrayAdapter<>(this, R.layout.autocompletehistory_layout, R.id.autoCompleteHistory, newAddresses);
-        for(int i = 0; i < adapterHistory.getCount(); i++){
-            Log.i("NEW_ADDRESSES", adapterHistory.getItem(i));
-        }
-
-
-        origin.setAdapter(adapterHistory);
-        destination.setAdapter(adapterStreets);
-
-
-        modeChanger.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                switch (mode){
-                    case VIEW:
-                        if(origin.getText().toString() != null && myLocationNewOverlay.getMyLocation() != null && destinationMarker.getSnippet() != null) {
-                            modeChanger.setImageResource(R.drawable.ic_directions);
-                            mode = Mode.ROUTES;
-                            /*if(originMarkerON){
-                                getRoadAsync(originMarker.getPosition(), destinationMarker.getPosition());
-                            } else {*/
-                            //Log.i("MAPAAASS_CLICK", destinationMarker.getSnippet());
-                            if (!search)
-                                updateHistory(destinationMarker.getSnippet());
-                            if (destination.getVisibility() == GONE) {
-                                destination.setVisibility(View.VISIBLE);
-                                destination.setText(origin.getText().toString());
-                            }
-                            road1.setVisibility(VISIBLE);
-                            road2.setVisibility(VISIBLE);
-                            swap.setVisibility(VISIBLE);
-                            origin.setText("Tu ubicación");
-                            getRoadAsync(myLocationNewOverlay.getMyLocation(), destinationMarker.getPosition());
-                        } else {
-                            Toast.makeText(MainActivity.this, "TERMINANDO DE CONFIGURAR, ESPERE UN MOMENTO", Toast.LENGTH_LONG).show();
-                        }
-                        //}
-                        break;
-                    case ROUTES:
-
-                        if(MAC != null && !MAC.isEmpty()) {
-                            Intent newIntent = new Intent(MainActivity.this,BluetoothService.class);
-                            newIntent.putExtra("PM", start_PM);
-                            startService(newIntent);
-                        } /*else {
-                            Toast.makeText(MainActivity.this, "Conéctese al sensor via Bluetooth, por favor", Toast.LENGTH_SHORT).show();
-                            break;
-                        }*/
-                        mode = Mode.NAVIGATION;
-
-                        getSupportActionBar().hide();
-                        modeChanger.setVisibility(View.INVISIBLE);
-                        myLocationBtn.setVisibility(View.INVISIBLE);
-                        bluetoothSelection.setVisibility(View.INVISIBLE);
-
-                        myLocationNewOverlay.enableFollowLocation();
-
-                        for(int i = 0; i < mRoadOverlays.length; i++){
-                            Log.i("ROAD_SIN_LISTENER", "EEEEEEEEO");
-                            /*int index = map.getOverlays().indexOf(mRoadOverlays[i]);
-                            ((Polyline) map.getOverlays().get(index)).setInfoWindow(null);
-                            ((Polyline) map.getOverlays().get(index)).setOnClickListener(null);*/
-                            if(mRoadOverlays[i] != null) {
-                                mRoadOverlays[i].setInfoWindow(null);
-                                mRoadOverlays[i].setOnClickListener(null);
-                                if (i != selectedRoad) {
-                                    mRoadOverlays[i].setVisible(false);
-                                }
-                            }
-                        }
-
-                        mapController.animateTo(myLocationNewOverlay.getMyLocation(), (double)20, (long)5);
-
-                        mEventsOverlay.setEnabled(false);
-
-                        signal.setVisibility(View.VISIBLE);
-                        instructions.setVisibility(View.VISIBLE);
-                        distance.setVisibility(View.VISIBLE);
-                        time.setVisibility(VISIBLE);
-
-                        instructions.setText(mRoads[selectedRoad].mNodes.get(1).mInstructions);
-                        signal.setImageResource(signalSelection(mRoads[selectedRoad].mNodes.get(1).mManeuverType));
-                        distance.setText(distance(mRoads[selectedRoad].mNodes.get(0).mLength));
-                        mTime = mRoads[selectedRoad].mDuration;
-                        time.setText(getRoadTime(mTime));
-
-                        Log.i("DURACION_RUTA", Math.round(mTime)+"");
-
-                        instructionsThread = new UpdateInstructions();
-                        instructionsThread.start();
-
-                        break;
-                    default:
-                }
-            }
-        });
-
-        myLocationBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(myLocationNewOverlay.getMyLocation() != null) {
-                    mapController.setCenter(myLocationNewOverlay.getMyLocation());
-                } else {
-                    mapController.setCenter(myLocation);
-                }
-                if(map.getZoomLevelDouble() < 14)
-                     mapController.setZoom(14);
-                map.setMapOrientation(0.0f);
-            }
-        });
-
-        bluetoothSelection.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                /*Intent intent = new Intent(MainActivity.this, BluetoothActivity.class);
-                startActivityForResult(intent, BLUETOOTH_ACTIVITY);*/
-                Intent intent = new Intent(MainActivity.this, UpdateFirebase.class);
-                intent.putExtra("user", userEmail);
-                startActivity(intent);
-                for(int i = 0; i< map.getOverlays().size(); i++){
-                    Log.i("CAAAAAPAAAAS", i+" "+map.getOverlays().get(i));
-                }
-            }
-        });
-
-        configureListeners(origin);
-        configureListeners(destination);
-
-        origin.setInputType(EditorInfo.TYPE_TEXT_VARIATION_FILTER);
-        origin.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-
-        destination.setInputType(EditorInfo.TYPE_TEXT_VARIATION_FILTER);
-        destination.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-
-        editorListener = new TextView.OnEditorActionListener() {
-            @Override
-            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
-                //Hide keyboard on enter press
-                if(event != null && (event.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
-                    InputMethodManager in = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                    in.hideSoftInputFromWindow(v.getWindowToken(),
-                            InputMethodManager.HIDE_NOT_ALWAYS);
-                }
-
-                if(v == origin && actionId == EditorInfo.IME_ACTION_SEARCH){
-                    //Toast.makeText(MainActivity.this, "PULSANDO EN INICIO", Toast.LENGTH_SHORT).show();
-
-                    String locationAddress = origin.getText().toString();
-
-                    locationAddress = isFavPlace(locationAddress);
-
-                    if (locationAddress.equals("")){
-                        Toast.makeText(MainActivity.this, "INICIO VACIO", Toast.LENGTH_SHORT).show();
-                        return false;
-                    }
-
-
-                    if(destination.getVisibility() == GONE){
-                        new GeocodingTask().execute(locationAddress, DEST_INDEX, map.getBoundingBox());
-                        search = true;
-                    } else if (destination.getVisibility() == View.VISIBLE){
-                        if(!locationAddress.equals("Tu ubicación")) {
-                            new GeocodingTask().execute(locationAddress, START_INDEX, map.getBoundingBox());
-                        } else {
-                            if(originMarkerON){
-                                //if(markers.getItems().size() == 2){
-                                    markers.remove(originMarker);
-                                    originMarkerON = false;
-                                //}
-                            }
-                            getRoadAsync(myLocationNewOverlay.getMyLocation(), destinationMarker.getPosition());
-                        }
-
-                    }
-                }
-                if(v == destination && actionId == EditorInfo.IME_ACTION_SEARCH){
-                    //Toast.makeText(MainActivity.this, "PULSANDO EN FINAL", Toast.LENGTH_SHORT).show();
-
-                    String locationAddress = destination.getText().toString();
-
-                    locationAddress = isFavPlace(locationAddress);
-
-                    if (locationAddress.equals("")){
-                        Toast.makeText(MainActivity.this, "FINAL VACIO", Toast.LENGTH_SHORT).show();
-                        return false;
-                    }
-
-
-                    if(!locationAddress.equals("Tu ubicación")) {
-                        new GeocodingTask().execute(locationAddress, DEST_INDEX, map.getBoundingBox());
-                    } else {
-                        if(destinationMarkerON){
-                            //if(markers.getItems().size() > 0){
-                                markers.remove(destinationMarker);
-                                destinationMarkerON = false;
-                            //}
-                        }
-                        if(originMarkerON)
-                        getRoadAsync(originMarker.getPosition(), myLocationNewOverlay.getMyLocation());
-                    }
-
-                }
-                return false;
-            }
-        };
-
-        road1.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.i("CLIIIICKES", "ROAD1");
-                selectedRoad = 0;
-                selectRoad(0);
-            }
-        });
-
-        road2.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Log.i("CLIIIICKES", "ROAD2");
-                selectedRoad = 1;
-                selectRoad(1);
-                road2.setBackgroundTintList(getColorStateList(R.color.colorButton));
-                road1.setBackgroundTintList(getColorStateList(R.color.colorPrimary));
-            }
-        });
-
-        swap.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if(origin.getText().toString().equals("Tu ubicación")){
-                    originMarker.setPosition(myLocation);
-                    Log.i("COMPROBACION_SWAP", "ENTRO");
-                }
-
-                if(destination.getText().toString().equals("Tu ubicación")){
-                    destinationMarker.setPosition(myLocation);
-                }
-                String text_aux = origin.getText().toString();
-                origin.setText(destination.getText().toString());
-                destination.setText(text_aux);
-                GeoPoint point_aux = originMarker.getPosition();
-                originMarker.setPosition(destinationMarker.getPosition());
-                destinationMarker.setPosition(point_aux);
-
-                Log.i("COMPROBACION_SWAP", myLocation +" "+ destinationMarker.getPosition());
-                Log.i("COMPROBACION_SWAP", destinationMarker.getPosition().getLatitude()+ " "+destinationMarker.getPosition().getLongitude());
-                if(!originMarkerON) {
-                    markers.add(originMarker);
-                    originMarkerON = true;
-                }
-                if(originMarkerON && originMarker.getPosition().getLatitude() == myLocation.getLatitude() &&
-                        originMarker.getPosition().getLongitude() == myLocation.getLongitude()){
-                    markers.remove(originMarker);
-                    originMarkerON = false;
-                }
-                if(!destinationMarkerON) {
-                    markers.add(destinationMarker);
-                    destinationMarkerON = true;
-                }
-                if (destinationMarkerON && destinationMarker.getPosition().getLatitude() == myLocation.getLatitude() &&
-                        destinationMarker.getPosition().getLongitude() == myLocation.getLongitude()){
-                    markers.remove(destinationMarker);
-                    destinationMarkerON = false;
-                }
-
-                if(origin.getText().toString().equals("Tu ubicación")){
-                    if(destinationMarkerON){
-                        getRoadAsync(myLocationNewOverlay.getMyLocation(), destinationMarker.getPosition());
-                    }
-                } else {
-                    getRoadAsync(originMarker.getPosition(), destinationMarker.getPosition());
-                }
-            }
-        });
-
-        origin.setOnEditorActionListener(editorListener);
-        destination.setOnEditorActionListener(editorListener);
-
-        formato = new DecimalFormat("#.##");
 
 
         ////////////
@@ -929,28 +931,9 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             }
         });
 
-
-        //Inicialiazacion destinationMarker
-        /*destinationMarker = new Marker(map);
-        destinationMarker.setPosition(new GeoPoint(0.0,0.0));
-        map.getOverlays().add(destinationMarker);
-
-        originMarker = new Marker(map);
-        map.getOverlays().add(originMarker);*/
-
-
-        destinationMarker = new Marker(map);
-        destinationMarker.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_location, null));
-        destinationMarker.setAnchor(Marker.ANCHOR_CENTER,Marker.ANCHOR_BOTTOM);
-
-        originMarker = new Marker(map);
-        originMarker.setIcon(ResourcesCompat.getDrawable(getResources(), R.drawable.ic_location, null));
-        originMarker.setAnchor(Marker.ANCHOR_CENTER,Marker.ANCHOR_BOTTOM);
-
-        positionChanged = false;
-
-
-        map.invalidate();
+        //////////////////////
+        //USUARIO
+        //////////////////////
 
         FirebaseAuth auth = FirebaseAuth.getInstance();
         if(auth.getCurrentUser() == null){
@@ -958,6 +941,10 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         } else {
             updateFirebaseUser(auth.getCurrentUser());
         }
+
+        //////////////////////
+        //INTERNET
+        //////////////////////
 
         networkManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         networkManager.getActiveNetwork();
@@ -984,6 +971,10 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         LocalBroadcastManager.getInstance(this).registerReceiver(mMessageReceiver,
                 new IntentFilter("PM_Data"));
 
+
+        //Actualizar todos los cambios aplicados al mapa
+        map.invalidate();
+
     }
 
     ////////////////////////////////
@@ -1007,6 +998,8 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
             } catch (Exception ex){}
         }
+
+        //Actualizar el histórico de lugares, por si se han añadido o modificado los lugares favoritos.
         String[] newAddresses = updatePlaces(new String[]{"Tu ubicación"});
         for(int i = 0; i < newAddresses.length; i++){
             Log.i("NEW_ADDRESSES", newAddresses[i]);
@@ -1014,12 +1007,13 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.autocompletehistory_layout, R.id.autoCompleteHistory, newAddresses);
         adapterHistory = adapter;
 
+        //Actualizar el perfil de contmaninación por si este ha sido cambiado
         SharedPreferences config = PreferenceManager.getDefaultSharedPreferences(this);
         profileNumber = Integer.parseInt(config.getString("profile", "0"));
         Log.i("PROOOFIIILEEE", profileNumber+"");
 
+        //Actualizar usuario si este se ha cambiado.
         FirebaseUser newUser = FirebaseAuth.getInstance().getCurrentUser();
-
         if(user != newUser || !userName.equals(newUser.getDisplayName())) {
             updateFirebaseUser(newUser);
         }
@@ -1035,8 +1029,11 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         //SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         //Configuration.getInstance().save(this, prefs);
         map.onPause();  //needed for compass, my location overlays, v6.0.0 and up
+
+        //Dejar de escuchar cambios de localización.
         locationManager.removeUpdates(this);
 
+        //Almacenar el histórico de lugares.
         StringBuilder sb = new StringBuilder();
         int favPlacesSize;
         if(favPlacesNames == null){
@@ -1067,6 +1064,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         } else {
             switch(mode){
                 case VIEW:
+                    mode = Mode.EMPTY;
                     if(destinationMarkerON){
                         markers.remove(destinationMarker);
                         destinationMarkerON = false;
@@ -1118,6 +1116,13 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                     newIntent.putExtra("PM", finish_PM);
                     startService(newIntent);
 
+                    //Solo si el usuario tiene seleccionado que se muestre el heatmap, lo mostramos, si no, no.
+                    SharedPreferences app = getSharedPreferences("app", Context.MODE_PRIVATE);
+                    boolean isHeatMapEnabled = app.getBoolean("contaminationMap", false);
+                    if(isHeatMapEnabled) {
+                        map.getOverlays().add(0, contaminationLayer);
+                    }
+
                     mode = Mode.ROUTES;
                     getSupportActionBar().show();
                     modeChanger.setVisibility(View.VISIBLE);
@@ -1162,15 +1167,15 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                     myLocationProvider = new GpsMyLocationProvider(this);
                     myLocationNewOverlay = new MyLocationNewOverlay(myLocationProvider, map);
                     myLocationNewOverlay.enableMyLocation();
-                    myLocationNewOverlay.enableFollowLocation();
+                    //myLocationNewOverlay.enableFollowLocation();
                     map.getOverlays().add( myLocationNewOverlay);
                     myLastLocation = new GeoPoint(0.0,0.0);
                     if(locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER) != null) {
                         myLocation = new GeoPoint(locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER));
                         mapController.setCenter(myLocation);
                     } else {
-                        myLocation = new GeoPoint(40.4147,-3.7004);
-                        mapController.setCenter(myLocation);
+                        myLocation = new GeoPoint(40.416724,-3.703493); //En caso de que no se conozca última ubicación,
+                        mapController.setCenter(myLocation);                                //se fija esta en el centro de Madrid
                     }
 
                     //Cambiamos el icono de ubicación
@@ -1221,18 +1226,18 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
     @Override
     public void onLocationChanged(Location location) {
         //Log.i("LOCALIZACION_INICIAL", "onLocation");
+        //Para centrar el mapa en la ubi del usuario al principio.
         if(first_location){
             //Log.i("LOCALIZACION_INICIAL_2", "onLocation");
             myLocation = new GeoPoint(location);
             first_location = false;
             mapController.setCenter(myLocation);
         }
+
         GeoPoint auxiliar = new GeoPoint(location);
         Log.i("TIEEEEEMPO", myLocation.getLatitude()+" "+myLocation.getLongitude());
-        positionChanged = false;
         if(myLocation.getLatitude() != auxiliar.getLatitude() ||
            myLocation.getLongitude() != auxiliar.getLongitude()) {
-            positionChanged = true;
             Log.i("TIEEEEEMPO_IN", myLocation.getLatitude()+" "+myLocation.getLongitude());
             if (myLocation != null) {
                 myLastLocation = myLocation;
@@ -1240,9 +1245,9 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             myLocation = new GeoPoint(location);
             //location.getSpeed();
             Log.i("TIEEEEEMPO", location.getLatitude() + " " + location.getLongitude() + " " + location.getBearing() + " " + location.getAccuracy());
+
+            //Solo si se está en modo navegación, se orienta el mapa según la orientación del usuario y se sigue su ubicación.
             if (mode == Mode.NAVIGATION) {
-                //Toast.makeText(this, "LLEVANDO A UBI", Toast.LENGTH_SHORT).show();
-                //myLocationOverlay.setBearing(location.getBearing());
                 map.setMapOrientation(-location.getBearing());
                 Log.i("FOLLOW_ENABLE", myLocationNewOverlay.isFollowLocationEnabled()+"");
                 if(!myLocationNewOverlay.isFollowLocationEnabled())
@@ -1269,22 +1274,6 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
     @Override
     public boolean singleTapConfirmedHelper(GeoPoint p) {
-        /*if (mRoadOverlays != null) {
-            for (int i=0; i<mRoadOverlays.length; i++)
-                map.getOverlays().remove(mRoadOverlays[i]);
-            mRoadOverlays = null;
-        }
-        if (destinationMarkerON || originMarkerON){
-            if(destinationMarkerON){
-                map.getOverlays().remove(destinationMarker);
-                destinationMarkerON = false;
-            }
-            if(originMarkerON){
-                map.getOverlays().remove(originMarker);
-                originMarkerON = false;
-            }
-        }*/
-       // consultaFirebase();
         return false;
     }
 
@@ -1293,10 +1282,10 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         if(mode != Mode.NAVIGATION) {
             search = false;
             destinationMarker.setPosition(p);
-            //if (markers.getItems().size() == 0) {
+
             if(!destinationMarkerON)
                 markers.add(destinationMarker);
-            //}
+
             destinationMarkerON = true;
             map.invalidate();
             new ReverseGeocodingTask().execute(destinationMarker);
@@ -1324,6 +1313,12 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
     //MÉTODOS PROPIOS
     //////////////////////
 
+
+    ////////////////
+    //RUTAS
+    ////////////////
+    //////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////
     //Crea los JSON correspondientes para solicitar la ruta más rápida y la de menor contaminación
     //Posteriormente ejecuta el hilo que hace la consulta a la API
     public void getRoadAsync(GeoPoint start, GeoPoint end){
@@ -1373,7 +1368,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             waypoints.add(start);
             waypoints.add(end);
 
-            new UpdateRoadTask().execute("https://api.openrouteservice.org/v2/directions/cycling-regular", fastData.toString(), postData.toString());
+            new AskForRoutes().execute("https://api.openrouteservice.org/v2/directions/cycling-regular", fastData.toString(), postData.toString());
         } catch (JSONException e) {
             e.printStackTrace();
             Log.i("MAPAAAS", "getRoadAsync");
@@ -1384,7 +1379,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
     //Hilo que hace la petición a la API de las rutas.
     //La respuesta recibida será tratada en el onPostExecute para crear las Rutas en forma de objeto Road
     @SuppressLint("StaticFieldLeak")
-    private class UpdateRoadTask extends AsyncTask<String, Void, ArrayList<String>> {
+    private class AskForRoutes extends AsyncTask<String, Void, ArrayList<String>> {
 
         protected ArrayList<String> doInBackground(String... params) {
 
@@ -1396,7 +1391,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             try {
 
                 httpURLConnection = (HttpURLConnection) new URL(params[0]).openConnection();
-                httpURLConnection.setRequestProperty("Authorization", "5b3ce3597851110001cf624890308d3cb7c049128b59d2b81071846d");
+                httpURLConnection.setRequestProperty("Authorization", getString(R.string.open_route_service_API));
                 httpURLConnection.setRequestProperty("Accept", "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8");
                 httpURLConnection.setRequestProperty("Content-Type", "application/json; charset=utf-8");
                 httpURLConnection.setRequestMethod("POST");
@@ -1412,7 +1407,6 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 wr.close();
 
                 InputStream in = httpURLConnection.getInputStream();
-                Log.i("MAPAAAS", "HOOOOOLAAAA");
                 InputStreamReader inputStreamReader = new InputStreamReader(in);
 
 
@@ -1424,7 +1418,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 }
 
                 httpURLConnection2 = (HttpURLConnection) new URL(params[0]).openConnection();
-                httpURLConnection2.setRequestProperty("Authorization", "5b3ce3597851110001cf624890308d3cb7c049128b59d2b81071846d");
+                httpURLConnection2.setRequestProperty("Authorization", getString(R.string.open_route_service_API));
                 httpURLConnection2.setRequestProperty("Accept", "application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8");
                 httpURLConnection2.setRequestProperty("Content-Type", "application/json; charset=utf-8");
                 httpURLConnection2.setRequestMethod("POST");
@@ -1550,16 +1544,6 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                         road.buildLegs(waypoints);
                         road.mStatus = 0;
                         roads[1] = road;
-                        /*if(road.mLength*1000 >= 1000) {
-                            road2.setText(String.valueOf(formato.format(road.mLength)) + " km");
-                        } else {
-                            road2.setText(String.valueOf(formato.format(road.mLength*1000))+ " m");
-                        }*/
-                        /*if(road.mDuration*60 >= 60) {
-                            road2.setText(String.valueOf(formato.format(road.mDuration)) + " min");
-                        } else {
-                            road2.setText(String.valueOf(formato.format(road.mDuration*60))+ " sec");
-                        }*/
                         setRoadTime(1, road);
                     }
                 } else{
@@ -1659,9 +1643,11 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 //to avoid covering the other overlays.
             }
         }
-        selectedRoad = 0;
-        selectRoad(0);
-        if(lost){
+        if(!lost){
+            selectedRoad = 0;
+            selectRoad(0);
+        } else {
+            selectRoad(selectedRoad);
             lost = false;
             Message msg = Message.obtain();
             msg.arg1 = HandlerInstruction.REROUTE.getValue();
@@ -1669,7 +1655,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
     }
 
-    //Listener de las rutas. Cuando pulsamos en una, se cambiará su color (indicando que es la seleccionada,
+    //Listener de las rutas. Cuando pulsamos en una, se cambiará su color (indicando que es la seleccionada),
     //y se abre una ventana donde se muestra la distancia y el tiempo de la misma.
     class RoadOnClickListener implements Polyline.OnClickListener{
         @Override public boolean onClick(Polyline polyline, MapView mapView, GeoPoint eventPos){
@@ -1736,6 +1722,33 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
     }
 
+    //Centra la vista del mapa en el BoundingBox pasado como parámtetro. Será llamado al seleccionar un punto al que ir
+    //para que la cámara del map englobe tanto a la posición inicial como a la final. Ese Boundingbox pasado será
+    //tratado para que la ruta se sitúe en las 3/4 partes inferiores del mapa y así que no interfiera con el toolbar
+    void setViewOn(BoundingBox bb){
+        if (bb != null){
+            // bb.increaseByScale((float)10);
+            double lat1 = bb.getLatNorth();
+            double lat2 = bb.getLatSouth();
+            lat1 = lat1 - lat2;
+            BoundingBox bb_aux = new BoundingBox();
+            bb_aux.set(bb.getLatNorth()+lat1, bb.getLonEast(), bb.getLatSouth(), bb.getLonWest());
+            map.zoomToBoundingBox(bb_aux, true, 300);
+            map.setMapOrientation(0.0f);
+            //startPlace.setText("Tu ubicacion");
+            //endPlace.setText(destinationMarker.getSnippet());
+
+        }
+    }
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+
+    //////////////
+    //HEATMAP
+    //////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
     //Hilo que consulta la base de datos para recoger los nuevos puntos de contamincación. Enviará un mensaje a la
     //actividad (tratado por el handler) para que actualice la vista del map.
     public class FireBaseThread extends Thread {
@@ -1757,30 +1770,14 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             long time_ms = System.currentTimeMillis();
             long hours_before = time_ms - timeUpdate;
             for(DataSnapshot postSnap:dataSnapshot.getChildren()){
-                //if(Long.parseLong(postSnap.getKey()) < 123416 //Tiempo por debajo del cual queremos borrar){
-                //    postSnap.getRef().removeValue();
-                //} else {
                 //if(Long.parseLong(postSnap.getKey()) > hours_before) {
                     Punto a = postSnap.getValue(Punto.class);
-                    //a.setTime(postSnap.getKey());
+                    a.setTime(postSnap.getKey());
                     //Log.i("TIME_PUNTO", a.getTime());
                     points.add(a);
-                    /*if (a.getPm() <= 10) {
-                        greens.add(a);
-                    } else if (a.getPm() <= 20) {
-                        yellows.add(a);
-                    } else if (a.getPm() <= 30) {
-                        oranges.add(a);
-                    } else {
-                        reds.add(a);
-                    }*/
-                //}
                 //}
             }
             discardPoints(points);
-            /*Message message = Message.obtain();
-            message.arg1 = HandlerInstruction.HEATMAP.getValue();
-            handler.sendMessage(message);*/
         }
 
     }
@@ -1795,7 +1792,9 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 Punto punto2 = puntos.get(j);
                 //if(Long.parseLong(punto2.getTime()) > Long.parseLong(punto.getTime())){
                     if(isInsideBoundingBox(punto2, bbox)){
-                        result = false;
+                        if(Long.parseLong(punto2.getTime()) > Long.parseLong(punto.getTime()) + 120000) {
+                            result = false;
+                        }
                     }
                 //}
             }
@@ -1831,29 +1830,15 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
         return result;
     }
+    ////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////
 
-    //Centra la vista del mapa en el BoundingBox pasado como parámtetro. Será llamado al seleccionar un punto al que ir
-    //para que la cámara del map englobe tanto a la posición inicial como a la final. Ese Boundingbox pasado será
-    //tratado para que la ruta se sitúe en las 3/4 partes inferiores del mapa y así que no interfiera con el toolbar
-    void setViewOn(BoundingBox bb){
-        if (bb != null){
-           // bb.increaseByScale((float)10);
-            double lat1 = bb.getLatNorth();
-            double lat2 = bb.getLatSouth();
-            lat1 = lat1 - lat2;
-            BoundingBox bb_aux = new BoundingBox();
-            bb_aux.set(bb.getLatNorth()+lat1, bb.getLonEast(), bb.getLatSouth(), bb.getLonWest());
-            map.zoomToBoundingBox(bb_aux, true, 300);
-            map.setMapOrientation(0.0f);
-            //startPlace.setText("Tu ubicacion");
-            //endPlace.setText(destinationMarker.getSnippet());
-
-        }
-    }
 
     ////////////////////////
     //GEOCODING
     ////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////
 
     //REVERSE GEOCODING
 
@@ -1922,10 +1907,11 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
     }
 
-    ////////////////////
-    //DIRECT GEOCODING
-    ////////////////////
 
+    //DIRECT GEOCODING
+
+    //Hilo que ejecuta la llamada a la Api oportuna para conseguir el punto geográfico a partir de la dirección enviada. Luego, en función
+    //de si era la dirección de origen o destino, colocará el marker que toque en dicho punto geográfico.
     private class GeocodingTask extends AsyncTask<Object, Void, List<Address>> {
         int mIndex;
         protected List<Address> doInBackground(Object... params) {
@@ -1983,7 +1969,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                     destinationMarkerON = true;
                     destinationMarker.setSnippet(addressDisplayName);
                     map.getController().setCenter(destinationMarker.getPosition());
-                    Toast.makeText(MainActivity.this, "PONIENDO DESTINO", Toast.LENGTH_SHORT).show();
+                    //Toast.makeText(MainActivity.this, "PONIENDO DESTINO", Toast.LENGTH_SHORT).show();
                     map.invalidate();
                 }
 
@@ -2005,10 +1991,16 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
     }
 
-    ///////////////////
-    //HILO DIRECCIONES
-    ///////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    /////////////////////////
+    //NAVEGACIÓN
+    /////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    //Hilo que se encarga de ir actualizando la información mostrada al usuario durante el modo navegación.
     private class UpdateInstructions extends Thread{
         GeoPoint lastLoc;
         RoadNode nodo;
@@ -2064,7 +2056,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                                         }
                                         distance_myLoc_node = distance(myLocation, nodo.mLocation);
                                     }
-                                } else {  //if(distance(myLocation, nodo.mLocation) > 20){
+                                } else {  //if(distanceText(myLocation, nodo.mLocation) > 20){
                                     Log.i("CAMBIOS", "DIST 31 " + distance(myLocation, nodo.mLocation));
                                     while (distance(myLocation, lastLoc) < 10 && key) {
 
@@ -2125,16 +2117,20 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
     }
 
+    //Comprueba que el tiempo tardado en llegar de un nodo a otro sea el estimado. Si se ha hecho dicho tramo más rápido,
+    //se actualizará el tiempo restante de la ruta con el tiempo recortado, mientras que, si se ha tardado más, se actualizará
+    //el tiempo con el retraso experimentado.
     public void checkCorrectTime(int minutes, int seconds, double duration){
-        //if((minutes*60 + seconds) < duration){
-            double quit = duration - (minutes*60 + seconds);
-            Message msg = Message.obtain();
-            msg.arg1 = HandlerInstruction.UPDATE_TIME.getValue();
-            msg.arg2 = (int)quit; //Si he tardado más, "quit" será negativo y por tanto se sumará al tiempo que quedaba
-            handler.sendMessage(msg);
-        //}
+        double quit1 = duration - minutes*60; //Diferencia entre lo que habría que haber quitado y lo que se ha quitado
+        double quit2 = duration - (minutes*60 + seconds); //Diferencia entre lo que se debería haber tardado y lo que se ha tardado
+        double quit = quit1 + quit2;
+        Message msg = Message.obtain();
+        msg.arg1 = HandlerInstruction.UPDATE_TIME.getValue();
+        msg.arg2 = (int)quit; //Si he tardado más, "quit" será negativo y por tanto se sumará al tiempo que quedaba
+        handler.sendMessage(msg);
     }
 
+    //Hilo que se encarga de ir midiendo el tiempo que tarda el usuario en realizar el recorrido entre dos nodos consecutivos.
     private class UpdateTime extends Thread{
         private boolean key;
         private int seconds;
@@ -2200,53 +2196,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
     }
 
-    public double distance (GeoPoint p1, GeoPoint p2){
-        final double RADIO_TIERRA = 6371000;
-        Log.i("DISTANCIAAAA", p1+" "+p2);
-        double dLat = Math.toRadians(p1.getLatitude() - p2.getLatitude());
-        double dLon = Math.toRadians(p1.getLongitude() - p2.getLongitude());
-        double lat1 = Math.toRadians(p1.getLatitude());
-        double lat2 = Math.toRadians(p2.getLatitude());
-        double a = Math.sin(dLat/2)*Math.sin(dLat/2)+ Math.sin(dLon/2)*Math.sin(dLon/2)*Math.cos(lat1)*Math.cos(lat2);
-        double c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-        return c*RADIO_TIERRA;
-    }
-
-    public void updateHistory(String text){
-        Log.i("MAPAAASS", "actualizaH");
-        if(text.equals("Tu ubicación")){
-            return;
-        }
-        /*ArrayList<String> aux = new ArrayList<String>();
-        aux.add("Tu ubicación");
-        aux.add(text);
-        int j = 2;
-        for(int i = 1; i < adapterHistory.getCount(); i++){
-            Log.i("MAPAAASS", "actualizaH "+i);
-            if(i < 9){
-                j++;
-                aux.add(adapterHistory.getItem(i).toString());
-            }
-        }*/
-        int size = adapterHistory.getCount()+1;
-        if(size > 9){
-            size = 9;
-        }
-        String[] placesDirections = new String[size];
-        String[] favPlaces = addFavPlaces(new String[]{"Tu ubicación"});
-        int i;
-        for(i = 0; i < favPlaces.length; i++){
-            placesDirections[i] = favPlaces[i];
-        }
-        placesDirections[i] = text;
-        i++;
-        while(i < size){
-            placesDirections[i] = adapterHistory.getItem(i-1);
-            i++;
-        }
-        adapterHistory = new ArrayAdapter<String>(this, R.layout.autocompletehistory_layout, R.id.autoCompleteHistory, placesDirections);
-    }
-
+    //Asigna la señal de la instrucción a realizar en el nodo que corresponda.
     public int signalSelection (int type){
         int id;
         switch(type){
@@ -2292,7 +2242,21 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         return id;
     }
 
-    public String distance(Double d){
+    //Fórmula de Haversine. Permite obtener la distancia entre dos puntos geográficos.
+    public double distance (GeoPoint p1, GeoPoint p2){
+        final double RADIO_TIERRA = 6371000;
+        Log.i("DISTANCIAAAA", p1+" "+p2);
+        double dLat = Math.toRadians(p1.getLatitude() - p2.getLatitude());
+        double dLon = Math.toRadians(p1.getLongitude() - p2.getLongitude());
+        double lat1 = Math.toRadians(p1.getLatitude());
+        double lat2 = Math.toRadians(p2.getLatitude());
+        double a = Math.sin(dLat/2)*Math.sin(dLat/2)+ Math.sin(dLon/2)*Math.sin(dLon/2)*Math.cos(lat1)*Math.cos(lat2);
+        double c = 2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return c*RADIO_TIERRA;
+    }
+
+    //Determina la distancia entre nodos a poner en la Navegación.
+    public String distanceText(Double d){
         String result;
         if(d > 1000){
             result = d/1000.0D+" Km";
@@ -2302,6 +2266,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         return result;
     }
 
+    //Actualiza la distancia mostrada en la Navegación.
     public String updateDistance(String dString, int n){
         String result = "";
         //Double length = Double.parseDouble((dString.split(" "))[0]);
@@ -2317,8 +2282,46 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
         return result;
     }
+    
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    
+    ///////////////////////////////////////
+    //AUTOCOMPLETETEXTVIEW Y LUGARES
+    ///////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    //Permite añadir la dirección buscada al historial.
+    public void updateHistory(String text){
+        Log.i("MAPAAASS", "actualizaH");
+        if(text.equals("Tu ubicación")){
+            return;
+        }
+        
+        int size = adapterHistory.getCount()+1;
+        if(size > 9){
+            size = 9;
+        }
+        String[] placesDirections = new String[size];
+        String[] favPlaces = addFavPlaces(new String[]{"Tu ubicación"});
+        int i;
+        for(i = 0; i < favPlaces.length; i++){
+            placesDirections[i] = favPlaces[i];
+        }
+        placesDirections[i] = text;
+        i++;
+        while(i < size){
+            placesDirections[i] = adapterHistory.getItem(i-1);
+            i++;
+        }
+        adapterHistory = new ArrayAdapter<String>(this, R.layout.autocompletehistory_layout, R.id.autoCompleteHistory, placesDirections);
+    }
 
 
+    
+
+    //Configura todos los listeners necesarios de los AutcompleteTextView: destination y origin.
     public void configureListeners(AutoCompleteTextView autocomplete){
         autocomplete.setOnFocusChangeListener(new View.OnFocusChangeListener() {
             @Override
@@ -2413,15 +2416,106 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
     }
 
 
+    public String[] addFavPlaces(String[] previous){
+        String[] result;
+        favPlacesNames = getFavPlacesAddresses();
+        if(favPlacesNames != null){
+            String[] aux = new String[favPlacesNames.length + previous.length];
+            int i;
+            for(i = 0; i < previous.length; i++){
+                aux[i] = previous[i];
+            }
+            for(String name : favPlacesNames){
+                Log.i("FAV_PLACES", name);
+                aux[i] = name;
+                i++;
+            }
+            result = aux;
+        } else {
+            result = previous;
+        }
+        return result;
+    }
 
+    public String[] getFavPlacesAddresses() {
+        SharedPreferences app = getSharedPreferences("app", Context.MODE_PRIVATE);
+        String placesDir = app.getString("placesDir", null);
+        if (placesDir != null && !placesDir.equals("")) {
+            favPlacesAddresses = placesDir.split("_");
+            return app.getString("placesNames", null).split("_");
+        } else {
+            return null;
+        }
+    }
+
+    public String[] addHistoryAddresses(String[] previous){
+        String[] result;
+        historyPlacesAddresses = getHistoryAddresses();
+        if(historyPlacesAddresses != null){
+            String[] aux = new String[previous.length + historyPlacesAddresses.length];
+            int i;
+            for(i = 0; i < previous.length; i++){
+                aux[i] = previous[i];
+            }
+            for(String text : historyPlacesAddresses){
+                aux[i] = text;
+                i++;
+            }
+            result = aux;
+        } else {
+            result = previous;
+        }
+        return result;
+    }
+
+    public String[] getHistoryAddresses() {
+        SharedPreferences app = getSharedPreferences("app", Context.MODE_PRIVATE);
+        String history = app.getString("history", null);
+        if (history != null &&!history.equals("")) {
+            return history.split("_");
+        } else {
+            return null;
+        }
+    }
+
+    public String[] updatePlaces(String[] previous){
+        return addHistoryAddresses(addFavPlaces(previous));
+    }
+
+    public String isFavPlace (String text){
+        String result = text;
+        for(int i = 0; i < favPlacesNames.length; i++){
+            if(favPlacesNames[i].equals(text)){
+                result = favPlacesAddresses[i];
+            }
+        }
+        return result;
+    }
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+    ///////////////////
+    //MENÚ LATERAL
+    ///////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         if(item.getItemId() == R.id.contaminacionmap){
             if(item.isChecked()){
                 map.getOverlays().remove(contaminationLayer);
+                SharedPreferences app = getSharedPreferences("app", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = app.edit();
+                editor.putBoolean("contaminationMap", false);
+                editor.commit();
                 item.setChecked(false);
             } else {
                 map.getOverlays().add(0, contaminationLayer);
+                SharedPreferences app = getSharedPreferences("app", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = app.edit();
+                editor.putBoolean("contaminationMap", true);
+                editor.commit();
                 item.setChecked(true);
             }
         }
@@ -2471,7 +2565,14 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
         return false;
     }
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
+    //////////////////////
+    // SIGN IN Y USUARIO
+    //////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
     public void showSignInOptions() {
         startActivityForResult(
                 AuthUI.getInstance()
@@ -2482,6 +2583,21 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                         .build(),
                 RC_SIGN_IN);
     }
+    public void updateFirebaseUser(FirebaseUser newUser){
+        user = newUser;
+        userEmail = user.getEmail();
+        userName = user.getDisplayName();
+        userEmailView.setText(userEmail);
+        userNameView.setText(userName);
+        Log.i("FIREBASE_AUTH", newUser.getDisplayName());
+        Log.i("FIREBASE_AUTH", newUser.getEmail());
+    }
+
+    ///////////////////////////
+    //RESULTADO DE ACTIVIDADES
+    ///////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -2527,92 +2643,14 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             }
         }
     }
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    public void updateFirebaseUser(FirebaseUser newUser){
-        user = newUser;
-        userEmail = user.getEmail();
-        userName = user.getDisplayName();
-        userEmailView.setText(userEmail);
-        userNameView.setText(userName);
-        Log.i("FIREBASE_AUTH", newUser.getDisplayName());
-        Log.i("FIREBASE_AUTH", newUser.getEmail());
-    }
-
-    public String[] addFavPlaces(String[] previous){
-        String[] result;
-        favPlacesNames = getFavPlacesAddresses();
-        if(favPlacesNames != null){
-            String[] aux = new String[favPlacesNames.length + previous.length];
-            int i;
-            for(i = 0; i < previous.length; i++){
-                aux[i] = previous[i];
-            }
-            for(String name : favPlacesNames){
-                Log.i("FAV_PLACES", name);
-                aux[i] = name;
-                i++;
-            }
-            result = aux;
-        } else {
-            result = previous;
-        }
-        return result;
-    }
-
-    public String[] getFavPlacesAddresses() {
-        SharedPreferences app = getSharedPreferences("app", Context.MODE_PRIVATE);
-        String placesDir = app.getString("placesDir", null);
-        if (placesDir != null && !placesDir.equals("")) {
-            favPlacesAddresses = placesDir.split("_");
-            return app.getString("placesNames", null).split("_");
-        } else {
-            return null;
-        }
-    }
-
-    public String[] addHistoryDirections(String[] previous){
-        String[] result;
-        historyPlacesAddresses = getHistoryAddresses();
-        if(historyPlacesAddresses != null){
-            String[] aux = new String[previous.length + historyPlacesAddresses.length];
-            int i;
-            for(i = 0; i < previous.length; i++){
-                aux[i] = previous[i];
-            }
-            for(String text : historyPlacesAddresses){
-                aux[i] = text;
-                i++;
-            }
-            result = aux;
-        } else {
-            result = previous;
-        }
-        return result;
-    }
-
-    public String[] getHistoryAddresses() {
-        SharedPreferences app = getSharedPreferences("app", Context.MODE_PRIVATE);
-        String history = app.getString("history", null);
-        if (history != null &&!history.equals("")) {
-            return history.split("_");
-        } else {
-            return null;
-        }
-    }
-
-    public String[] updatePlaces(String[] previous){
-        return addHistoryDirections(addFavPlaces(previous));
-    }
-
-    public String isFavPlace (String text){
-        String result = text;
-        for(int i = 0; i < favPlacesNames.length; i++){
-            if(favPlacesNames[i].equals(text)){
-                result = favPlacesAddresses[i];
-            }
-        }
-        return result;
-    }
+    /////////////////////////
+    //ALERT NETWORK DIALOG
+    /////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     private void createAlertNetworkDialog(){
 
@@ -2635,6 +2673,14 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             }
         });
     }
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    //////////////////////
+    //UPLOAD TO FIREBASE
+    //////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////////////////////
 
     private BroadcastReceiver mMessageReceiver = new BroadcastReceiver() {
         @Override
@@ -2642,7 +2688,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             // Get extra data included in the Intent
             ArrayList<Integer> PMData = intent.getIntegerArrayListExtra("TestData");
             if (PMData != null) {
-                Punto aux = new Punto();
+                /*Punto aux = new Punto();
                 aux.setLatitud(myLocation.getLatitude());
                 aux.setLongitud(myLocation.getLongitude());
                 aux.setPm(PMData.get(0));
@@ -2658,7 +2704,8 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
                 long time = currentTimeMillis();
                 String string_time = String.valueOf(time);
-                mRootReference.child("Contaminacion").child(string_time).setValue(datos);
+                mRootReference.child("Contaminacion").child(string_time).setValue(datos);*/
+                Toast.makeText(MainActivity.this, "Dato "+PMData.get(0), Toast.LENGTH_SHORT).show();
             }
 
         }

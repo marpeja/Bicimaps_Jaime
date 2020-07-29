@@ -8,6 +8,8 @@ import android.widget.ArrayAdapter;
 import android.widget.Filter;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+
 import com.example.osmdroid.R;
 
 import java.util.ArrayList;
@@ -27,7 +29,7 @@ public class AutoSuggestAdapter<T> extends ArrayAdapter<String> {
     }
 
     @Override
-    public View getView(int position, View convertView, ViewGroup parent) {
+    public View getView(int position, View convertView, @NonNull ViewGroup parent) {
         View view = convertView;
         if (convertView == null) {
             LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
@@ -44,12 +46,12 @@ public class AutoSuggestAdapter<T> extends ArrayAdapter<String> {
 
     @Override
     public Filter getFilter() {
-        return nameFilter;
+        return containsFilter;
     }
     /**
      * Custom Filter implementation for custom suggestions we provide.
      */
-    Filter nameFilter = new Filter() {
+    Filter containsFilter = new Filter() {
         @Override
         public CharSequence convertResultToString(Object resultValue) {
             return (String) resultValue;
