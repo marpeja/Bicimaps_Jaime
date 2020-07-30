@@ -522,6 +522,12 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                                 Log.i("ENTROOOOOOOOOOOO", "1");
                                 Intent newIntent = new Intent(MainActivity.this,BluetoothService.class);
                                 newIntent.putExtra("PM", start_PM);
+                                long duration = (long) mRoads[selectedRoad].mDuration*60000;
+                                long a = 60000;
+                                Log.i("AAAAAAAAAAAAAAAAAAA", getDigits(a)+"");
+                                long b = a + getDigits(a)*(long)Math.pow(10, getDigits(a));
+                                Log.i("AAAAAAAAAAAAAAAAAAA", b+"");
+                                newIntent.putExtra("Duration", b);
                                 startService(newIntent);
                             } /*else {
                             Toast.makeText(MainActivity.this, "Conéctese al sensor via Bluetooth, por favor", Toast.LENGTH_SHORT).show();
@@ -1634,7 +1640,13 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 roadPolyline.setOnClickListener(new RoadOnClickListener());
                 try {
                     Log.i("NUMERO_CAPAS", map.getOverlays().size()+" "+map.getOverlays().get(0));
-                    mapOverlays.add(3, roadPolyline);
+
+                    if(map.getOverlays().contains(contaminationLayer)) {
+                        mapOverlays.add(3, roadPolyline);
+                    } else {
+                        mapOverlays.add(2, roadPolyline);
+
+                    }
                 } catch (Exception e) {
                     Log.i("MAPAAAS", "ERRRROOOOOORRR");
                     Log.e("ERROR", e.getMessage(), e);
@@ -2705,11 +2717,20 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 long time = currentTimeMillis();
                 String string_time = String.valueOf(time);
                 mRootReference.child("Contaminacion").child(string_time).setValue(datos);*/
-                Toast.makeText(MainActivity.this, "Dato "+PMData.get(0), Toast.LENGTH_SHORT).show();
+                Toast.makeText(MainActivity.this, "Dato "+PMData.get(0)+ " "+PMData.get(1) , Toast.LENGTH_SHORT).show();
             }
 
         }
 
     };
+
+    public int getDigits(long duration){
+        int i = 0;
+        while(duration > 0){
+            duration = duration / 10;
+            i++;
+        }
+        return i;
+    }
 
 }

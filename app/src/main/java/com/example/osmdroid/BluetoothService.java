@@ -41,7 +41,8 @@ public class BluetoothService extends Service {
     private StringBuilder recDataString = new StringBuilder();
     final int handlerState = 1;//used to identify handler message
     private ArrayList<Integer> PMData;
-    private int N_PM=1;
+    private int N_PM=2;
+    private long duration;
 
     private char order;
     private boolean stop_fan_Flag=false;
@@ -79,9 +80,14 @@ public class BluetoothService extends Service {
                 Bundle b = intent.getExtras();
                 order = b.getChar("PM");
                 if (order == 's') {
-                    stop_fan_Flag = true;
-                    stopSelf();
+                    if (mConnectedThread != null) {
+                        mConnectedThread.write(String.valueOf(order));
+                        stopSelf();
+                    } else {
+                        stop_fan_Flag = true;
+                    }
                 }
+                duration = b.getLong("Duration", 0);
             }
         }
         if (mConnectedThread != null) {
@@ -127,10 +133,11 @@ public class BluetoothService extends Service {
                             Log.d("DEBUG_BT_PART", "numero " +num);
                             //Para los nuevos sensores implementar la separación del string en las distintas medidas
                             // y asignar los valores a PMData
-
+                            String[] contamination = num.split(" ");
+                            Log.d("DEBUG_BT_PART", "NUMERO "+num+ " numero1Array "+contamination[0]+" tamaño "+contamination.length);
                             try {
-                                for(int i=0; i<N_PM; i++) {
-                                    PMData.set(i,Integer.parseInt(num));
+                                for(int i=0; i<contamination.length; i++) {
+                                    PMData.set(i,Integer.parseInt(contamination[i]));
                                 }
                                 Log.d("DEBUG_BT_PART", "Array " +PMData.get(0));
 
@@ -263,13 +270,25 @@ public class BluetoothService extends Service {
                     if(pending != ""){
                         mConnectedThread.write(String.valueOf(order));
                         pending = "";
+                        if(duration != 0) {
+                            mConnectedThread.write(String.valueOf(duration));
+                            duration = 0;
+                        }
+                    }
+                    if(stop_fan_Flag){
+                        mConnectedThread.write(String.valueOf('s'));
+                        stopSelf();
                     }
                     bytes = mmInStream.read(buffer);            //read bytes from input buffer
                     String readMessage = new String(buffer, 0, bytes);
                     //Log.d("DEBUG_BT_PART", "CONNECTED THREAD " + readMessage);
                     // Send the obtained bytes to the UI Activity via handler
-
-                    mBTHandler.obtainMessage(handlerState, bytes, -1, readMessage).sendToTarget();
+                    /*if(readMessage.equals("y")){
+                        Log.d("DEBUG_BT_PART", "CONNECTED THREAD " + readMessage);
+                        stopSelf();
+                    } else {*/
+                        mBTHandler.obtainMessage(handlerState, bytes, -1, readMessage).sendToTarget();
+                    //}
                 } catch (IOException e) {
                     Log.d("DEBUG_BT_PART", e.toString());
                     Log.d("DEBUG_BT_PART", "UNABLE TO READ/WRITE, STOPPING SERVICE");
