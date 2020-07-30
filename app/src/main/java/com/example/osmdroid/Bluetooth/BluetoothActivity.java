@@ -89,25 +89,33 @@ public class BluetoothActivity extends AppCompatActivity {
 
                 BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                 String deviceName = device.getName();
-                MyDevicesFound.add(device);
-                //String[] devicesFound = MyDevicesFound.toArray(new String[0]);
-
-                mAdapter = new BTAdapter(MyDevicesFound);
-
-                //listener de Recycler View
-                mAdapter.setOnItemClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        int position = recyclerBluetooth.getChildAdapterPosition(v);
-                        MAC_ADDRESS = MyDevicesFound.get(position).getAddress();
-                        mBluetoothAdapter.cancelDiscovery();
-                        finishActivity();
+                boolean isAlready = false;
+                for(BluetoothDevice dev : MyDevicesFound){
+                    if(device.getAddress().equals(dev.getAddress()) && device.getName().equals(dev.getName())){
+                        isAlready = true;
                     }
-                });
+                }
+                if(!isAlready) {
+                    MyDevicesFound.add(device);
+                    //String[] devicesFound = MyDevicesFound.toArray(new String[0]);
 
-                recyclerBluetooth.setAdapter(mAdapter);
+                    mAdapter = new BTAdapter(MyDevicesFound);
 
-                Log.i("Bluetooth", "got device " + deviceName );
+                    //listener de Recycler View
+                    mAdapter.setOnItemClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            int position = recyclerBluetooth.getChildAdapterPosition(v);
+                            MAC_ADDRESS = MyDevicesFound.get(position).getAddress();
+                            mBluetoothAdapter.cancelDiscovery();
+                            finishActivity();
+                        }
+                    });
+
+                    recyclerBluetooth.setAdapter(mAdapter);
+
+                    Log.i("Bluetooth", "got device " + deviceName);
+                }
             }
         }
     };
