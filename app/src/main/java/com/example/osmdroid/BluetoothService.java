@@ -79,22 +79,29 @@ public class BluetoothService extends Service {
             if (intent.getExtras() != null) {
                 Bundle b = intent.getExtras();
                 order = b.getChar("PM");
-                if (order == 's') {
+                /*if (order == 's') {
                     if (mConnectedThread != null) {
                         mConnectedThread.write(String.valueOf(order));
                         stopSelf();
                     } else {
                         stop_fan_Flag = true;
                     }
-                }
+                }*/
                 duration = b.getLong("Duration", 0);
             }
         }
         if (mConnectedThread != null) {
             mConnectedThread.write(String.valueOf(order));
+            if(order == 's'){
+                stopSelf();
+            }
 
         } else {
-            pending = String.valueOf(order);
+            if(order == 's'){
+                stop_fan_Flag = true;
+            }else{
+                pending = String.valueOf(order);
+            }
         }
 
         //Handle que espera recibir mensaje de ConnectedThread.run()
@@ -268,7 +275,7 @@ public class BluetoothService extends Service {
                 try {
                     Log.d("DEBUG_BT_PART", "CONNECTED THREAD WAITING");
                     if(pending != ""){
-                        mConnectedThread.write(String.valueOf(order));
+                        mConnectedThread.write(String.valueOf(pending));
                         pending = "";
                         if(duration != 0) {
                             mConnectedThread.write(String.valueOf(duration));
@@ -280,6 +287,8 @@ public class BluetoothService extends Service {
                         stopSelf();
                     }
                     bytes = mmInStream.read(buffer);            //read bytes from input buffer
+
+                    Log.d("DEBUG_BT_PART", "READED");
                     String readMessage = new String(buffer, 0, bytes);
                     //Log.d("DEBUG_BT_PART", "CONNECTED THREAD " + readMessage);
                     // Send the obtained bytes to the UI Activity via handler
@@ -287,7 +296,7 @@ public class BluetoothService extends Service {
                         Log.d("DEBUG_BT_PART", "CONNECTED THREAD " + readMessage);
                         stopSelf();
                     } else {*/
-                        mBTHandler.obtainMessage(handlerState, bytes, -1, readMessage).sendToTarget();
+                    mBTHandler.obtainMessage(handlerState, bytes, -1, readMessage).sendToTarget();
                     //}
                 } catch (IOException e) {
                     Log.d("DEBUG_BT_PART", e.toString());

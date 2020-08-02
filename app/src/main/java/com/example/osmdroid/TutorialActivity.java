@@ -48,13 +48,13 @@ public class TutorialActivity extends AppCompatActivity {
                 } else {
                     boolean from_home = getIntent().getBooleanExtra("from_home", false);
                     Log.i("TUTORIAL_ACTIVITY", "FROM HOME "+ from_home);
-                    if(from_home){
+                    /*if(from_home){
                         Intent intent = new Intent(TutorialActivity.this, MainActivity.class);
                         startActivity(intent);
                         finish();
-                    } else {
+                    } else {*/
                         finish();
-                    }
+                    //}
                 }
             }
         });

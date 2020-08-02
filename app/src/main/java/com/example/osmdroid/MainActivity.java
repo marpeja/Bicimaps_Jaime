@@ -279,6 +279,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setTheme(R.style.AppTheme_NoActionBar);
 
         //handle permissions first, before map is created. not depicted here
 
@@ -525,7 +526,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                                 long duration = (long) mRoads[selectedRoad].mDuration*60000;
                                 long a = 60000;
                                 Log.i("AAAAAAAAAAAAAAAAAAA", getDigits(a)+"");
-                                long b = a + getDigits(a)*(long)Math.pow(10, getDigits(a));
+                                long b = duration + getDigits(duration)*(long)Math.pow(10, getDigits(duration));
                                 Log.i("AAAAAAAAAAAAAAAAAAA", b+"");
                                 newIntent.putExtra("Duration", b);
                                 startService(newIntent);
@@ -1020,8 +1021,10 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
         //Actualizar usuario si este se ha cambiado.
         FirebaseUser newUser = FirebaseAuth.getInstance().getCurrentUser();
-        if(user != newUser || !userName.equals(newUser.getDisplayName())) {
-            updateFirebaseUser(newUser);
+        if(newUser != null) {
+            if (user != newUser || !userName.equals(newUser.getDisplayName())) {
+                updateFirebaseUser(newUser);
+            }
         }
 
     }
@@ -2496,9 +2499,11 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
     public String isFavPlace (String text){
         String result = text;
-        for(int i = 0; i < favPlacesNames.length; i++){
-            if(favPlacesNames[i].equals(text)){
-                result = favPlacesAddresses[i];
+        if(favPlacesNames != null) {
+            for (int i = 0; i < favPlacesNames.length; i++) {
+                if (favPlacesNames[i].equals(text)) {
+                    result = favPlacesAddresses[i];
+                }
             }
         }
         return result;
@@ -2620,8 +2625,22 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
             if (resultCode == RESULT_OK) {
                 // Successfully signed in
+
                 FirebaseUser newUser = FirebaseAuth.getInstance().getCurrentUser();
                 updateFirebaseUser(newUser);
+
+                SharedPreferences config = getPreferences(Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = config.edit();
+
+                boolean first_access = config.getBoolean("first_access", true);
+                if(first_access) {
+                    editor.putBoolean("first_access", false);
+                    editor.commit();
+                    Intent intent = new Intent(MainActivity.this, TutorialActivity.class);
+                    //intent.putExtra("from_home", true);
+                    startActivity(intent);
+                    //finish();
+                }
             } else {
                 // Sign in failed. If response is null the user canceled the
                 // sign-in flow using the back button. Otherwise check
@@ -2700,7 +2719,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             // Get extra data included in the Intent
             ArrayList<Integer> PMData = intent.getIntegerArrayListExtra("TestData");
             if (PMData != null) {
-                /*Punto aux = new Punto();
+                Punto aux = new Punto();
                 aux.setLatitud(myLocation.getLatitude());
                 aux.setLongitud(myLocation.getLongitude());
                 aux.setPm(PMData.get(0));
@@ -2716,8 +2735,8 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
                 long time = currentTimeMillis();
                 String string_time = String.valueOf(time);
-                mRootReference.child("Contaminacion").child(string_time).setValue(datos);*/
-                Toast.makeText(MainActivity.this, "Dato "+PMData.get(0)+ " "+PMData.get(1) , Toast.LENGTH_SHORT).show();
+                mRootReference.child("Contaminacion").child(string_time).setValue(datos);
+                //Toast.makeText(MainActivity.this, "Dato "+PMData.get(0)+ " "+PMData.get(1) , Toast.LENGTH_SHORT).show();
             }
 
         }
