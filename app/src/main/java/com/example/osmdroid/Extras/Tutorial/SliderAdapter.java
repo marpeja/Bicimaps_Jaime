@@ -1,4 +1,4 @@
-package com.example.osmdroid.Datos;
+package com.example.osmdroid.Extras.Tutorial;
 
 import android.content.Context;
 import android.view.LayoutInflater;

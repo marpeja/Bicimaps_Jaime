@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">OsmDroid</string>
+    <string name="app_name">BiciMaps</string>
 
     <string name="route">Route</string>
     <string name="nav_header_title">BiciMap</string>

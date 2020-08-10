@@ -1,4 +1,4 @@
-package com.example.osmdroid.Datos;
+package com.example.osmdroid.Modelo;
 
 import android.content.Context;
 import android.view.LayoutInflater;

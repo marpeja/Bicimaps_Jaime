@@ -1,4 +1,4 @@
-package com.example.osmdroid;
+package com.example.osmdroid.Extras.Lugares;
 
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -14,6 +14,8 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.osmdroid.R;
 
 import java.util.StringTokenizer;
 

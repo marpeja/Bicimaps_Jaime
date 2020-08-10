@@ -1,7 +1,6 @@
-package com.example.osmdroid.Datos;
+package com.example.osmdroid.Extras.Lugares;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;

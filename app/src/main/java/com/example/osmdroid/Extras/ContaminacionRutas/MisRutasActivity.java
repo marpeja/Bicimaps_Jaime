@@ -1,4 +1,4 @@
-package com.example.osmdroid;
+package com.example.osmdroid.Extras.ContaminacionRutas;
 
 import android.app.DatePickerDialog;
 import android.graphics.drawable.Drawable;
@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat;
 
 import com.example.osmdroid.Modelo.DialogoSelectorFecha;
 import com.example.osmdroid.Modelo.Punto;
+import com.example.osmdroid.R;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;

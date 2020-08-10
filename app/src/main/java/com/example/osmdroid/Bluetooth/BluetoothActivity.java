@@ -91,7 +91,7 @@ public class BluetoothActivity extends AppCompatActivity {
                 String deviceName = device.getName();
                 boolean isAlready = false;
                 for(BluetoothDevice dev : MyDevicesFound){
-                    if(device.getAddress().equals(dev.getAddress()) && device.getName().equals(dev.getName())){
+                    if(device.getAddress().equals(dev.getAddress())){
                         isAlready = true;
                     }
                 }
@@ -108,6 +108,7 @@ public class BluetoothActivity extends AppCompatActivity {
                             int position = recyclerBluetooth.getChildAdapterPosition(v);
                             MAC_ADDRESS = MyDevicesFound.get(position).getAddress();
                             mBluetoothAdapter.cancelDiscovery();
+                            Toast.makeText(BluetoothActivity.this, "Conectado a "+MyDevicesFound.get(position).getName(), Toast.LENGTH_SHORT).show();
                             finishActivity();
                         }
                     });

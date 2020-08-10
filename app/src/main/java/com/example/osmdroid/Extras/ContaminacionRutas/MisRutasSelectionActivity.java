@@ -1,4 +1,4 @@
-package com.example.osmdroid;
+package com.example.osmdroid.Extras.ContaminacionRutas;
 
 import android.content.Intent;
 import android.os.Bundle;
@@ -9,7 +9,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.osmdroid.Datos.MisRutasSelectionAdapter;
+import com.example.osmdroid.R;
 
 import java.text.DateFormat;
 import java.util.ArrayList;

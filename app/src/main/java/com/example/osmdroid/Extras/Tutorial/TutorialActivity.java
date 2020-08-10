@@ -1,9 +1,7 @@
-package com.example.osmdroid;
+package com.example.osmdroid.Extras.Tutorial;
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.text.Html;
-import android.util.Log;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.Button;
@@ -11,9 +9,10 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.viewpager.widget.ViewPager;
 
-import com.example.osmdroid.Datos.SliderAdapter;
+import com.example.osmdroid.R;
 
 public class TutorialActivity extends AppCompatActivity {
 
@@ -46,8 +45,8 @@ public class TutorialActivity extends AppCompatActivity {
                 if(currentPage < dots.length -1 ){
                     slideViewPager.setCurrentItem(currentPage + 1);
                 } else {
-                    boolean from_home = getIntent().getBooleanExtra("from_home", false);
-                    Log.i("TUTORIAL_ACTIVITY", "FROM HOME "+ from_home);
+                    //boolean from_home = getIntent().getBooleanExtra("from_home", false);
+                    //Log.i("TUTORIAL_ACTIVITY", "FROM HOME "+ from_home);
                     /*if(from_home){
                         Intent intent = new Intent(TutorialActivity.this, MainActivity.class);
                         startActivity(intent);
@@ -108,12 +107,12 @@ public class TutorialActivity extends AppCompatActivity {
             dots[i] = new TextView(this);
             dots[i].setText(Html.fromHtml("&#8226;"));
             dots[i].setTextSize(35);
-            dots[i].setTextColor(getResources().getColor(R.color.colorTransparentGrey));
+            dots[i].setTextColor(ContextCompat.getColor(this, R.color.colorTransparentGrey));
             dotsLayout.addView(dots[i]);
         }
 
         if(dots[position] != null){
-            dots[position].setTextColor(getResources().getColor(R.color.colorWhite));
+            dots[position].setTextColor(ContextCompat.getColor(this, R.color.colorWhite));
         }
     }
 }

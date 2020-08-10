@@ -1,4 +1,4 @@
-package com.example.osmdroid;
+package com.example.osmdroid.Extras.Lugares;
 
 import android.content.Context;
 import android.content.Intent;
@@ -13,7 +13,7 @@ import androidx.preference.PreferenceManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.example.osmdroid.Datos.MisLugaresAdapter;
+import com.example.osmdroid.R;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import java.util.StringTokenizer;
@@ -35,7 +35,7 @@ public class MisLugaresActivity extends AppCompatActivity {
         setContentView(R.layout.mis_lugares);
 
         misLugares = findViewById(R.id.recycler_misLugares);
-        updateMisLugaresAdapter();
+        //updateMisLugaresAdapter();
 
         SharedPreferences config = PreferenceManager.getDefaultSharedPreferences(this);
         MAX_PLACES = Integer.parseInt(config.getString("max_places", "4"));

@@ -1,4 +1,4 @@
-package com.example.osmdroid;
+package com.example.osmdroid.Bluetooth;
 
 import android.annotation.SuppressLint;
 import android.annotation.TargetApi;

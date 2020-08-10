@@ -56,7 +56,13 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 
 import com.example.osmdroid.Bluetooth.BluetoothActivity;
-import com.example.osmdroid.Datos.AutoSuggestAdapter;
+import com.example.osmdroid.Bluetooth.BluetoothService;
+import com.example.osmdroid.Modelo.AutoSuggestAdapter;
+import com.example.osmdroid.Extras.Configuración.ConfiguracionActivity;
+import com.example.osmdroid.Extras.ContaminacionRutas.MisRutasActivity;
+import com.example.osmdroid.Extras.Lugares.MisLugaresActivity;
+import com.example.osmdroid.Extras.Perfil.MiPerfilActivity;
+import com.example.osmdroid.Extras.Tutorial.TutorialActivity;
 import com.example.osmdroid.Modelo.GeocoderNominatimMod;
 import com.example.osmdroid.Modelo.Punto;
 import com.firebase.ui.auth.AuthUI;
@@ -521,7 +527,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                         if(mRoadOverlays != null){
                             if(MAC != null && !MAC.isEmpty()) {
                                 Log.i("ENTROOOOOOOOOOOO", "1");
-                                Intent newIntent = new Intent(MainActivity.this,BluetoothService.class);
+                                Intent newIntent = new Intent(MainActivity.this, BluetoothService.class);
                                 newIntent.putExtra("PM", start_PM);
                                 long duration = (long) mRoads[selectedRoad].mDuration*60000;
                                 long a = 60000;
@@ -839,59 +845,61 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 }
 
                 if(msg.arg1 == HandlerInstruction.HEATMAP.getValue()){
-                    int size = contaminationLayer.getItems().size();
-                    for(int i = size - 1; i > -1; i--){
-                        contaminationLayer.remove(contaminationLayer.getItems().get(i));
+                    if(contaminationLayer != null) {
+                        int size = contaminationLayer.getItems().size();
+                        for (int i = size - 1; i > -1; i--) {
+                            contaminationLayer.remove(contaminationLayer.getItems().get(i));
+                        }
+                        for (Punto v : greens) {
+                            Marker marker = new Marker(map);
+                            marker.setOnMarkerClickListener(null);
+                            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                            marker.setPanToView(false);
+                            marker.setInfoWindow(null);
+                            marker.setIcon(green);
+                            marker.setPosition(new GeoPoint(v.getLatitud(), v.getLongitud()));
+                            marker.setAlpha((float) 0.4);
+                            contaminationLayer.add(marker);
+                        }
+                        for (Punto a : yellows) {
+                            Marker marker = new Marker(map);
+                            marker.setOnMarkerClickListener(null);
+                            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                            marker.setPanToView(false);
+                            marker.setInfoWindow(null);
+                            marker.setIcon(yellow);
+                            marker.setPosition(new GeoPoint(a.getLatitud(), a.getLongitud()));
+                            marker.setAlpha((float) 0.4);
+                            contaminationLayer.add(marker);
+                        }
+                        for (Punto n : oranges) {
+                            Marker marker = new Marker(map);
+                            marker.setOnMarkerClickListener(null);
+                            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                            marker.setPanToView(false);
+                            marker.setInfoWindow(null);
+                            marker.setIcon(orange);
+                            marker.setPosition(new GeoPoint(n.getLatitud(), n.getLongitud()));
+                            marker.setAlpha((float) 0.4);
+                            contaminationLayer.add(marker);
+                        }
+                        for (Punto r : reds) {
+                            Marker marker = new Marker(map);
+                            marker.setOnMarkerClickListener(null);
+                            marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
+                            marker.setPanToView(false);
+                            marker.setInfoWindow(null);
+                            marker.setIcon(red);
+                            marker.setPosition(new GeoPoint(r.getLatitud(), r.getLongitud()));
+                            marker.setAlpha((float) 0.4);
+                            contaminationLayer.add(marker);
+                        }
+                        Log.i("MAPAAAS_HANDLER", "TAMAÑO_CONTAMINACION " + contaminationLayer.getItems().size());
+                        /*for(int i=0; i< map.getOverlays().size(); i++){
+                            Log.i("MAPAAAS", map.getOverlays().get(i).toString());
+                        }*/
+                        map.invalidate();
                     }
-                    for(Punto v : greens){
-                        Marker marker = new Marker(map);
-                        marker.setOnMarkerClickListener(null);
-                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-                        marker.setPanToView(false);
-                        marker.setInfoWindow(null);
-                        marker.setIcon(green);
-                        marker.setPosition(new GeoPoint(v.getLatitud(), v.getLongitud()));
-                        marker.setAlpha((float)0.4);
-                        contaminationLayer.add(marker);
-                    }
-                    for(Punto a : yellows){
-                        Marker marker = new Marker(map);
-                        marker.setOnMarkerClickListener(null);
-                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-                        marker.setPanToView(false);
-                        marker.setInfoWindow(null);
-                        marker.setIcon(yellow);
-                        marker.setPosition(new GeoPoint(a.getLatitud(), a.getLongitud()));
-                        marker.setAlpha((float)0.4);
-                        contaminationLayer.add(marker);
-                    }
-                    for(Punto n : oranges){
-                        Marker marker = new Marker(map);
-                        marker.setOnMarkerClickListener(null);
-                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-                        marker.setPanToView(false);
-                        marker.setInfoWindow(null);
-                        marker.setIcon(orange);
-                        marker.setPosition(new GeoPoint(n.getLatitud(), n.getLongitud()));
-                        marker.setAlpha((float)0.4);
-                        contaminationLayer.add(marker);
-                    }
-                    for(Punto r : reds){
-                        Marker marker = new Marker(map);
-                        marker.setOnMarkerClickListener(null);
-                        marker.setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_CENTER);
-                        marker.setPanToView(false);
-                        marker.setInfoWindow(null);
-                        marker.setIcon(red);
-                        marker.setPosition(new GeoPoint(r.getLatitud(), r.getLongitud()));
-                        marker.setAlpha((float)0.4);
-                        contaminationLayer.add(marker);
-                    }
-                    Log.i("MAPAAAS_HANDLER", "TAMAÑO_CONTAMINACION " + contaminationLayer.getItems().size());
-                    /*for(int i=0; i< map.getOverlays().size(); i++){
-                        Log.i("MAPAAAS", map.getOverlays().get(i).toString());
-                    }*/
-                    map.invalidate();
 
                 }
 
