@@ -9,7 +9,12 @@
         <item
             android:id="@+id/map_normal"
             android:icon="@android:drawable/ic_menu_mapmode"
-            android:title="Normal" />
+            android:title="Normal"/>
+        <item
+            android:id="@+id/debugger"
+            android:icon="@android:drawable/ic_partial_secure"
+            android:title="Debugger"
+            android:visible="false"/>
         <item
             android:id="@+id/contamination_history"
             android:icon="@android:drawable/ic_menu_sort_by_size"

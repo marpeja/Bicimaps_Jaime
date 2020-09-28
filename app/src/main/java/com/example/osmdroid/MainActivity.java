@@ -57,6 +57,7 @@ import androidx.preference.PreferenceManager;
 
 import com.example.osmdroid.Bluetooth.BluetoothActivity;
 import com.example.osmdroid.Bluetooth.BluetoothService;
+import com.example.osmdroid.Extras.Debugger.DebugActivity;
 import com.example.osmdroid.Modelo.AutoSuggestAdapter;
 import com.example.osmdroid.Extras.Configuración.ConfiguracionActivity;
 import com.example.osmdroid.Extras.ContaminacionRutas.MisRutasActivity;
@@ -122,6 +123,10 @@ import java.util.Map;
 
 import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
+import static java.lang.Math.cos;
+import static java.lang.Math.sin;
+import static java.lang.Math.sqrt;
+import static java.lang.Math.toRadians;
 import static java.lang.System.currentTimeMillis;
 
 public class MainActivity extends AppCompatActivity implements MapEventsReceiver,
@@ -223,6 +228,9 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
     private GpsMyLocationProvider myLocationProvider;
     private GeoPoint myLocation;
     private GeoPoint myLastLocation;
+    private GeoPoint getLastLocation;
+    private long time_act;
+    private long time_prev;
 
     //HEATMAP
     private ArrayList<Punto> points;
@@ -289,7 +297,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
         //handle permissions first, before map is created. not depicted here
 
-        requestPermissionsIfNecessary(new String[] {
+        requestPermissionsIfNecessary(new String[]{
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 // WRITE_EXTERNAL_STORAGE is required in order to show the map
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
@@ -325,6 +333,8 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
         navigationView = findViewById(R.id.navigation_view);
         navigationView.setNavigationItemSelectedListener(this);
+
+
 
         //////////////////
         //MAP AND LAYERS
@@ -399,8 +409,8 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         ////////////////////////////////////////////////////////////////////////////
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
-            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+            locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
+            locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 5, this);
             /////////////////////////////////////////////////////////////////
             /////////////////////////////////////////////////////////////////
             /*fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
@@ -505,7 +515,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             public void onClick(View v) {
                 switch (mode){
                     case VIEW:
-                        if(origin.getText().toString() != null && myLocationNewOverlay.getMyLocation() != null && destinationMarker.getSnippet() != null) {
+                        if(!origin.getText().toString().equals("") && myLocationNewOverlay.getMyLocation() != null && destinationMarker.getSnippet() != null) {
                             modeChanger.setImageResource(R.drawable.ic_directions);
                             mode = Mode.ROUTES;
 
@@ -520,7 +530,12 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                             swap.setVisibility(VISIBLE);
                             getRoadAsync(myLocationNewOverlay.getMyLocation(), destinationMarker.getPosition());
                         } else {
-                            Toast.makeText(MainActivity.this, "TERMINANDO DE CONFIGURAR, ESPERE UN MOMENTO", Toast.LENGTH_LONG).show();
+                            if (origin.getText().toString().equals("")) {
+                                Toast.makeText(MainActivity.this, "FIJA UN DESTINO", Toast.LENGTH_LONG).show();
+                            } else {
+                                Toast.makeText(MainActivity.this, "TERMINANDO DE CONFIGURAR, ESPERE UN MOMENTO", Toast.LENGTH_LONG).show();
+
+                            }
                         }
                         break;
                     case ROUTES:
@@ -529,12 +544,13 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                                 Log.i("ENTROOOOOOOOOOOO", "1");
                                 Intent newIntent = new Intent(MainActivity.this, BluetoothService.class);
                                 newIntent.putExtra("PM", start_PM);
-                                long duration = (long) mRoads[selectedRoad].mDuration*60000;
-                                long a = 60000;
-                                Log.i("AAAAAAAAAAAAAAAAAAA", getDigits(a)+"");
-                                long b = duration + getDigits(duration)*(long)Math.pow(10, getDigits(duration));
-                                Log.i("AAAAAAAAAAAAAAAAAAA", b+"");
-                                newIntent.putExtra("Duration", b);
+                                long duration = (long) (mRoads[selectedRoad].mDuration*60000);
+                                //Log.d("DEBUG_BT_PARTT", duration+"");
+                                long a = 30000;
+                                //Log.i("AAAAAAAAAAAAAAAAAAA", getDigits(a)+"");
+                                //long b = duration + getDigits(duration)*(long)Math.pow(10, getDigits(duration));
+                                //Log.i("AAAAAAAAAAAAAAAAAAA", b+"");
+                                newIntent.putExtra("Duration", duration);
                                 startService(newIntent);
                             } /*else {
                             Toast.makeText(MainActivity.this, "Conéctese al sensor via Bluetooth, por favor", Toast.LENGTH_SHORT).show();
@@ -827,7 +843,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 }
 
                 if(msg.arg1 == HandlerInstruction.RECALCULATE.getValue()){
-                    Toast.makeText(MainActivity.this, "RECALCULANDO RECORRIDO "+ instructionsThread.isAlive(), Toast.LENGTH_SHORT).show();
+                    Toast.makeText(MainActivity.this, "RECALCULANDO RECORRIDO"/*+ instructionsThread.isAlive()*/, Toast.LENGTH_SHORT).show();
                     lost = true;
                     getRoadAsync(myLocation, destinationMarker.getPosition());
                 }
@@ -842,6 +858,62 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
                     instructionsThread = new UpdateInstructions();
                     instructionsThread.start();
+                }
+
+                if(msg.arg1 == 46){
+                    if(mode == Mode.NAVIGATION){
+                        getSupportActionBar().show();
+                        myLocationBtn.setVisibility(VISIBLE);
+                        bluetoothSelection.setVisibility(VISIBLE);
+                        modeChanger.setImageResource(R.drawable.ic_distance);
+
+                        signal.setVisibility(GONE);
+                        instructions.setVisibility(GONE);
+                        distance.setVisibility(GONE);
+                        time.setVisibility(GONE);
+
+                        myLocationNewOverlay.disableFollowLocation();
+
+                        if(instructionsThread.isAlive())
+                            instructionsThread.end();
+                    }
+                    mode = Mode.EMPTY;
+
+
+
+                    modeChanger.setVisibility(View.INVISIBLE);
+                    destination.setVisibility(GONE);
+                    clear_destination.setVisibility(GONE);
+                    clear_origin.setVisibility(GONE);
+                    road1.setVisibility(GONE);
+                    road2.setVisibility(GONE);
+                    swap.setVisibility(GONE);
+
+                    if (mRoadOverlays != null) {
+                        for(Polyline road : mRoadOverlays)
+                            map.getOverlays().remove(road);
+                        mRoadOverlays = null;
+                    }
+                    if (destinationMarkerON || originMarkerON){
+                        if(destinationMarkerON){
+                            markers.remove(destinationMarker);
+                            destinationMarkerON = false;
+                        }
+                        if(originMarkerON){
+                            map.getOverlays().remove(originMarker);
+                            markers.remove(originMarker);
+                            originMarkerON = false;
+                        }
+                    }
+
+                    mEventsOverlay.setEnabled(true);
+                    mapController.setZoom(14);
+                    mapController.setCenter(myLocationNewOverlay.getMyLocation());
+                    map.setMapOrientation(0.0f);
+
+
+
+                    origin.setText("");
                 }
 
                 if(msg.arg1 == HandlerInstruction.HEATMAP.getValue()){
@@ -962,20 +1034,23 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         //////////////////////
 
         networkManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        networkManager.getActiveNetwork();
-        if( networkManager.getActiveNetwork() == null){
+        /*if( networkManager.getActiveNetwork() == null){
             createAlertNetworkDialog();
-        }
+        }*/
         networkCallback = new ConnectivityManager.NetworkCallback(){
             @Override
             public void onLost(@NonNull Network network){
-                createAlertNetworkDialog();
+                if(mode == Mode.NAVIGATION || mode == Mode.ROUTES)
+                    createAlertNetworkDialog();
             }
 
             @Override
             public void onAvailable(@NonNull Network network){
                 if(networkDialog != null){
                     networkDialog.dismiss();
+                }
+                if(mode == Mode.VIEW) {
+                    new ReverseGeocodingTask().execute(destinationMarker);
                 }
             }
         };
@@ -1009,8 +1084,8 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         if(ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
             try {
                 //on API15 AVDs,network provider fails. no idea why
-                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
-                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 5, this);
+                locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
             } catch (Exception ex){}
         }
 
@@ -1022,10 +1097,16 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         ArrayAdapter<String> adapter = new ArrayAdapter<>(this, R.layout.autocompletehistory_layout, R.id.autoCompleteHistory, newAddresses);
         adapterHistory = adapter;
 
-        //Actualizar el perfil de contmaninación por si este ha sido cambiado
+        //Actualizar el perfil de contaminación por si este ha sido cambiado, así como el modo debugger
         SharedPreferences config = PreferenceManager.getDefaultSharedPreferences(this);
         profileNumber = Integer.parseInt(config.getString("profile", "0"));
         Log.i("PROOOFIIILEEE", profileNumber+"");
+
+        if (config.getBoolean("debugger", false)) {
+            navigationView.getMenu().findItem(R.id.debugger).setVisible(true);
+        }else{
+            navigationView.getMenu().findItem(R.id.debugger).setVisible(false);
+        }
 
         //Actualizar usuario si este se ha cambiado.
         FirebaseUser newUser = FirebaseAuth.getInstance().getCurrentUser();
@@ -1179,8 +1260,8 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             } else {
                 Toast.makeText(this, "ACEPTADO", Toast.LENGTH_SHORT).show();
                 if(permissions[i].contains("ACCESS_FINE_LOCATION")){
-                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
-                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
+                    locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 5, this);
+                    locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 5, this);
                     myLocationProvider = new GpsMyLocationProvider(this);
                     myLocationNewOverlay = new MyLocationNewOverlay(myLocationProvider, map);
                     myLocationNewOverlay.enableMyLocation();
@@ -1256,10 +1337,12 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         if(myLocation.getLatitude() != auxiliar.getLatitude() ||
            myLocation.getLongitude() != auxiliar.getLongitude()) {
             Log.i("TIEEEEEMPO_IN", myLocation.getLatitude()+" "+myLocation.getLongitude());
-            if (myLocation != null) {
+            //if (myLocation != null) {
                 myLastLocation = myLocation;
-            }
+                time_prev = time_act;
+            //}
             myLocation = new GeoPoint(location);
+            time_act = System.currentTimeMillis();
             //location.getSpeed();
             Log.i("TIEEEEEMPO", location.getLatitude() + " " + location.getLongitude() + " " + location.getBearing() + " " + location.getAccuracy());
 
@@ -1793,12 +1876,12 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             long time_ms = System.currentTimeMillis();
             long hours_before = time_ms - timeUpdate;
             for(DataSnapshot postSnap:dataSnapshot.getChildren()){
-                //if(Long.parseLong(postSnap.getKey()) > hours_before) {
+                if(Long.parseLong(postSnap.getKey()) > hours_before ) {
                     Punto a = postSnap.getValue(Punto.class);
                     a.setTime(postSnap.getKey());
                     //Log.i("TIME_PUNTO", a.getTime());
                     points.add(a);
-                //}
+                }
             }
             discardPoints(points);
         }
@@ -1811,18 +1894,19 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             Punto punto = puntos.get(i);
             BoundingBox bbox = createBoundingBox(punto);
             boolean result = true;
+            long output_time = Long.parseLong(punto.getTime()) + 120000;
             for(int j = i+1; j < puntos.size() && result; j++){
                 Punto punto2 = puntos.get(j);
                 //if(Long.parseLong(punto2.getTime()) > Long.parseLong(punto.getTime())){
                     if(isInsideBoundingBox(punto2, bbox)){
-                        if(Long.parseLong(punto2.getTime()) > Long.parseLong(punto.getTime()) + 120000) {
+                        if(Long.parseLong(punto2.getTime()) > output_time){
                             result = false;
                         }
                     }
                 //}
             }
             if(result){
-                if (punto.getPm() <= 15) {
+                if (punto.getPm() <= 12.5) {
                     greens.add(punto);
                 } else if (punto.getPm() <= 25) {
                     yellows.add(punto);
@@ -1923,9 +2007,17 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             }
             marker.setSnippet(result);
             if(destination.getVisibility() == GONE) {
-                origin.setText(marker.getSnippet(), false);
+                if(!result.equals("")) {
+                    origin.setText(marker.getSnippet(), false);
+                }else{
+                    Toast.makeText(MainActivity.this, "Compruebe su conexión a internet", Toast.LENGTH_SHORT).show();
+                }
             } else if (destination.getVisibility() == View.VISIBLE){
-                destination.setText(marker.getSnippet(), false);
+                if(!result.equals("")){
+                    destination.setText(marker.getSnippet(), false);
+                }else{
+                    Toast.makeText(MainActivity.this, "Compruebe su conexión a internet", Toast.LENGTH_SHORT).show();
+                }
             }
         }
     }
@@ -1956,7 +2048,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
         protected void onPostExecute(List<Address> foundAdresses) {
             if (foundAdresses == null) {
-                Toast.makeText(getApplicationContext(), "Geocoding error", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "Geocoding error. Compruebe su conexión a internet", Toast.LENGTH_SHORT).show();
             } else if (foundAdresses.size() == 0) { //if no address found, display an error
                 Toast.makeText(getApplicationContext(), "Address not found.", Toast.LENGTH_SHORT).show();
             } else {
@@ -2101,7 +2193,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                                 }
                                 if(key && distance(myLocation, lastLoc) < 200) {
                                     Log.i("DISTANCIA_RL", distance(myLocationNewOverlay.getMyLocation(), nodo.mLocation) + "");
-                                    Log.i("DISTANCIA_REAL", distance(myLocation, nodo.mLocation) + " " + mRoads[selectedRoad].mNodes.get(i).mLength);
+                                    Log.i("DISTANCIA_REAL", distance(myLocation, nodo.mLocation) + " " + mRoads[selectedRoad].mNodes.get(i).mLength+ " "+ myLocation+" "+nodo.mLocation);
                                     Message msg = Message.obtain();
                                     msg.arg1 = HandlerInstruction.UPDATE_DISTANCE.getValue();
                                     msg.arg2 = (int) Math.round(distance(myLocation, nodo.mLocation));
@@ -2145,8 +2237,8 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
     //el tiempo con el retraso experimentado.
     public void checkCorrectTime(int minutes, int seconds, double duration){
         double quit1 = duration - minutes*60; //Diferencia entre lo que habría que haber quitado y lo que se ha quitado
-        double quit2 = duration - (minutes*60 + seconds); //Diferencia entre lo que se debería haber tardado y lo que se ha tardado
-        double quit = quit1 + quit2;
+        //double quit2 = duration - (minutes*60 + seconds); //Diferencia entre lo que se debería haber tardado y lo que se ha tardado
+        double quit = quit1;// + quit2;
         Message msg = Message.obtain();
         msg.arg1 = HandlerInstruction.UPDATE_TIME.getValue();
         msg.arg2 = (int)quit; //Si he tardado más, "quit" será negativo y por tanto se sumará al tiempo que quedaba
@@ -2246,6 +2338,12 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 break;
             case 7:
                 id = R.drawable.ic_roundabout;
+                break;
+            case 8:
+                id = R.drawable.ic_roundabout;
+                break;
+            case 9:
+                id = R.drawable.ic_u_turn;
                 break;
             case 10:
                 id = R.drawable.ic_arrived;
@@ -2388,7 +2486,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                             }
                             //Toast.makeText(MainActivity.this, "ADAPTADOR 2", Toast.LENGTH_SHORT).show();
                             Log.i("AUTOCOMPLETE_CONF", "SIN BUSQ " + adapterHistory.getCount() + " ");
-                            if(autocomplete.getAdapter() != adapterHistory && autocomplete.getAdapter() != adapterHistory)
+                            if(autocomplete.getAdapter() != adapterHistory)
                                 autocomplete.setAdapter(adapterHistory);
 
                             if (autocomplete.getAdapter() == adapterStreets)
@@ -2544,10 +2642,18 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 item.setChecked(true);
             }
         }
-        if(item.getItemId() == R.id.contamination_history){
-            Intent intent = new Intent(MainActivity.this, MisRutasActivity.class);
-            intent.putExtra("mode", "General");
+        if(item.getItemId() == R.id.debugger){
+            Intent intent = new Intent(MainActivity.this, DebugActivity.class);
             startActivity(intent);
+        }
+        if(item.getItemId() == R.id.contamination_history){
+            if(networkManager.getActiveNetwork() == null){
+                Toast.makeText(MainActivity.this, "Conéctese a internet", Toast.LENGTH_SHORT).show();
+            } else {
+                Intent intent = new Intent(MainActivity.this, MisRutasActivity.class);
+                intent.putExtra("mode", "General");
+                startActivity(intent);
+            }
         }
         if(item.getItemId() == R.id.tutorial_menu){
             Intent intent = new Intent(MainActivity.this, TutorialActivity.class);
@@ -2558,9 +2664,13 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         if(item.getItemId() == R.id.mis_rutas){
             /*Intent intent = new Intent(MainActivity.this, MisRutasSelectionActivity.class);
             startActivity(intent);*/
-            Intent intent = new Intent(MainActivity.this, MisRutasActivity.class);
-            intent.putExtra("mode", "User");
-            startActivity(intent);
+            if(networkManager.getActiveNetwork() == null){
+                Toast.makeText(MainActivity.this, "Conéctese a internet", Toast.LENGTH_SHORT).show();
+            } else {
+                Intent intent = new Intent(MainActivity.this, MisRutasActivity.class);
+                intent.putExtra("mode", "User");
+                startActivity(intent);
+            }
         }
 
         if(item.getItemId() == R.id.sign_out){
@@ -2575,8 +2685,12 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
         }
 
         if(item.getItemId() == R.id.perfil){
-            Intent intent = new Intent(MainActivity.this, MiPerfilActivity.class);
-            startActivityForResult(intent,PERFIL_ACTIVITY);
+            if(networkManager.getActiveNetwork() == null){
+                Toast.makeText(MainActivity.this, "Conéctese a internet", Toast.LENGTH_SHORT).show();
+            } else {
+                Intent intent = new Intent(MainActivity.this, MiPerfilActivity.class);
+                startActivityForResult(intent, PERFIL_ACTIVITY);
+            }
         }
 
         if(item.getItemId() == R.id.configuración){
@@ -2695,11 +2809,15 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
 
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this, R.style.Theme_AppCompat_Dialog_Alert)
                 .setTitle("Sin internet")
-                .setMessage("Reconéctese o pulse OK para cerrar la app")
+                .setMessage("Reconéctese o pulse OK para acabar navegación")
                 .setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        finish();
+                        //finish();
+                        Message msg = Message.obtain();
+                        msg.arg1 = 46;
+                        handler.sendMessage(msg);
+
                     }
                 });
 
@@ -2708,7 +2826,10 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             @Override
             public void onCancel(DialogInterface dialog) {
                 networkDialog.dismiss();
-                MainActivity.this.finish();
+                //MainActivity.this.finish();
+                Message msg = Message.obtain();
+                msg.arg1 = 46;
+                handler.sendMessage(msg);
             }
         });
     }
@@ -2733,6 +2854,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 aux.setPm(PMData.get(0));
                 aux.setMac(MAC);
                 aux.setUser(user.getEmail());
+                aux.setSpeed(getVelocidad());
 
                 Map<String, Object> datos = new HashMap<>();
                 datos.put("latitud", aux.getLatitud());
@@ -2740,6 +2862,7 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
                 datos.put("pm", aux.getPm());
                 datos.put("mac", aux.getMac());
                 datos.put("user", aux.getUser());
+                datos.put("speed", aux.getSpeed());
 
                 long time = currentTimeMillis();
                 String string_time = String.valueOf(time);
@@ -2758,6 +2881,23 @@ public class MainActivity extends AppCompatActivity implements MapEventsReceiver
             i++;
         }
         return i;
+    }
+
+    private double getVelocidad(){
+        if((myLastLocation != null) && (myLastLocation != getLastLocation)) {
+            getLastLocation = myLastLocation;
+            double r = 6378100;
+            double v_lat = toRadians(myLocation.getLatitude()-myLastLocation.getLatitude());
+            double v_lon = toRadians( myLocation.getLongitude()- myLastLocation.getLongitude());
+            double a  = sin(v_lat/2)*sin(v_lat/2) + cos(toRadians(myLocation.getLatitude())) * cos(toRadians(myLastLocation.getLatitude())) *sin(v_lon/2)*sin(v_lon/2);
+            double c= 2 * Math.atan2(sqrt(a), sqrt(1-a));
+            double distancia = r * c;
+            double velocidad = distancia / ((time_act - time_prev) * 0.001);
+
+            return velocidad ;
+        }else{
+            return 0;}
+
     }
 
 }

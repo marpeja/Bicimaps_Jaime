@@ -10,6 +10,10 @@ public class Punto implements Serializable {
     private String user;
     private String mac;
     private String time;
+    private double speed;
+    private String observations;
+
+
 
     public Punto(){    }
 
@@ -20,6 +24,16 @@ public class Punto implements Serializable {
         this.user = user;
         this.mac = mac;
         this.time = time;
+    }
+    public Punto(double longitud, double latitud, double pm, String user, String mac, String time, double speed, String observations){
+        this.latitud = latitud;
+        this.longitud = longitud;
+        this.pm = pm;
+        this.user = user;
+        this.mac = mac;
+        this.time = time;
+        this.speed = speed;
+        this.observations = observations;
     }
 
     public void setLatitud(double latitud){
@@ -70,4 +84,19 @@ public class Punto implements Serializable {
         this.time = time;
     }
 
+    public String getObservations() {
+        return observations;
+    }
+
+    public void setObservations(String observations) {
+        this.observations = observations;
+    }
+
+    public double getSpeed() {
+        return speed;
+    }
+
+    public void setSpeed(double speed) {
+        this.speed = speed;
+    }
 }

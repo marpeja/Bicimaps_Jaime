@@ -13,4 +13,8 @@
         android:summary="Limita el número de lugares favoritos que se puedan definir. Por defecto son 4"
         android:inputType="number"
         android:defaultValue="4"/>
+    <CheckBoxPreference
+        android:key="debugger"
+        android:title="Activar modo debugger"
+        android:summary="Permite indicar cuando comenzar a recoger contaminación, anotar observaciones y almacenar las medidas en un archivo local"/>
 </PreferenceScreen>

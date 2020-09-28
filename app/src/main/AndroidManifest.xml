@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     package="com.example.osmdroid">
 
     <uses-permission android:name="android.permission.INTERNET"/>
@@ -31,7 +30,8 @@
         android:roundIcon="@mipmap/ic_bicimaps_launcher_round"
         android:supportsRtl="true"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:theme="@style/AppTheme">
+        android:theme="@style/AppTheme"
+        android:requestLegacyExternalStorage="true">
         <meta-data
             android:name="preloaded_fonts"
             android:resource="@array/preloaded_fonts" />
@@ -69,6 +69,8 @@
         <activity android:name=".Extras.Configuración.ConfiguracionActivity"/>
         <activity android:name=".Extras.Lugares.MisLugaresActivity"/>
         <activity android:name=".Extras.Lugares.MisLugaresEditActivity"/>
+        <activity android:name=".Extras.Debugger.ObservacionesActivity"/>
+        <activity android:name=".Extras.Debugger.DebugActivity"/>
     </application>
 
 </manifest>

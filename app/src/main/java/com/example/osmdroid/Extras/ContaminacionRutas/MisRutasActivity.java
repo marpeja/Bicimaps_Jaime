@@ -281,11 +281,11 @@ public class MisRutasActivity extends AppCompatActivity implements  DatePickerDi
                     Punto a = postSnap.getValue(Punto.class);
                     if(a.getUser().equals(user)) {
                         result = 2;
-                        if (a.getPm() <= 10) {
+                        if (a.getPm() <= 12.5) {
                             greens.add(a);
-                        } else if (a.getPm() <= 20) {
+                        } else if (a.getPm() <= 25) {
                             yellows.add(a);
-                        } else if (a.getPm() <= 30) {
+                        } else if (a.getPm() <= 35) {
                             oranges.add(a);
                         } else {
                             reds.add(a);
@@ -327,11 +327,11 @@ public class MisRutasActivity extends AppCompatActivity implements  DatePickerDi
                 if(Long.parseLong(postSnap.getKey()) > ms && Long.parseLong(postSnap.getKey()) < ms_extra) {
                     Punto a = postSnap.getValue(Punto.class);
                     result = 2;
-                    if (a.getPm() <= 10) {
+                    if (a.getPm() <= 12.5) {
                         greens.add(a);
-                    } else if (a.getPm() <= 20) {
+                    } else if (a.getPm() <= 25) {
                         yellows.add(a);
-                    } else if (a.getPm() <= 30) {
+                    } else if (a.getPm() <= 35) {
                         oranges.add(a);
                     } else {
                         reds.add(a);

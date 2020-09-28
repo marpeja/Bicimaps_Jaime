@@ -43,6 +43,7 @@ public class BluetoothService extends Service {
     private ArrayList<Integer> PMData;
     private int N_PM=2;
     private long duration;
+    private boolean debug = false;
 
     private char order;
     private boolean stop_fan_Flag=false;
@@ -88,10 +89,15 @@ public class BluetoothService extends Service {
                     }
                 }*/
                 duration = b.getLong("Duration", 0);
+                debug = b.getBoolean("Debug", false);
             }
         }
         if (mConnectedThread != null) {
             mConnectedThread.write(String.valueOf(order));
+            if(duration != 0) {
+                mConnectedThread.write(String.valueOf(duration) + '\n');
+                duration = 0;
+            }
             if(order == 's'){
                 stopSelf();
             }
@@ -115,7 +121,7 @@ public class BluetoothService extends Service {
                     String recData = recDataString.toString();
                     int recData_length = recData.length();
 
-                    if (stop_fan_Flag) {  //Caso de que haya que parar
+                    /*if (stop_fan_Flag) {  //Caso de que haya que parar
                         if (recData != null && !recData.isEmpty()) {
                             for (int i = 0; i < recData_length; i++) {
                                 if (recData.charAt(i) == 's') {
@@ -126,7 +132,7 @@ public class BluetoothService extends Service {
                             }
 
                         }
-                    }
+                    }*/
 
 
 
@@ -150,10 +156,15 @@ public class BluetoothService extends Service {
 
                                 Log.d("RECORDED", recDataString.toString());
                                 // Do stuff here with your data, like adding it to the database
-
-                                Intent intent = new Intent("PM_Data");
-                                intent.putIntegerArrayListExtra("TestData", PMData);
-                                LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
+                                if(!debug) {
+                                    Intent intent = new Intent("PM_Data");
+                                    intent.putIntegerArrayListExtra("TestData", PMData);
+                                    LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
+                                } else {
+                                    Intent intent = new Intent("PM_Data_Debug");
+                                    intent.putIntegerArrayListExtra("TestData", PMData);
+                                    LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
+                                }
 
 
                             } catch (NumberFormatException nfe) {
@@ -278,7 +289,7 @@ public class BluetoothService extends Service {
                         mConnectedThread.write(String.valueOf(pending));
                         pending = "";
                         if(duration != 0) {
-                            mConnectedThread.write(String.valueOf(duration));
+                            mConnectedThread.write(String.valueOf(duration)+'\n');
                             duration = 0;
                         }
                     }
@@ -290,7 +301,7 @@ public class BluetoothService extends Service {
 
                     Log.d("DEBUG_BT_PART", "READED");
                     String readMessage = new String(buffer, 0, bytes);
-                    //Log.d("DEBUG_BT_PART", "CONNECTED THREAD " + readMessage);
+                    //Log.d("DEBUG_BT_PARTT", "CONNECTED THREAD " + readMessage);
                     // Send the obtained bytes to the UI Activity via handler
                     /*if(readMessage.equals("y")){
                         Log.d("DEBUG_BT_PART", "CONNECTED THREAD " + readMessage);
