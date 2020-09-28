@@ -128,9 +128,7 @@ public class BluetoothService extends Service {
                                     mConnectedThread.write(String.valueOf(recData.charAt(i)));
                                     stop_fan_Flag=false;
                                 }
-
                             }
-
                         }
                     }*/
 
@@ -141,35 +139,35 @@ public class BluetoothService extends Service {
                         Log.d("DEBUG_BT_PART", "completo "+recData);
 
                         //if(recData.charAt(0) == 'r') {
-                            //Recibimos PM del sensor
-                            String num = recData.substring(0, recData.length() - 2);
-                            Log.d("DEBUG_BT_PART", "numero " +num);
-                            //Para los nuevos sensores implementar la separación del string en las distintas medidas
-                            // y asignar los valores a PMData
-                            String[] contamination = num.split(" ");
-                            Log.d("DEBUG_BT_PART", "NUMERO "+num+ " numero1Array "+contamination[0]+" tamaño "+contamination.length);
-                            try {
-                                for(int i=0; i<contamination.length; i++) {
-                                    PMData.set(i,Integer.parseInt(contamination[i]));
-                                }
-                                Log.d("DEBUG_BT_PART", "Array " +PMData.get(0));
-
-                                Log.d("RECORDED", recDataString.toString());
-                                // Do stuff here with your data, like adding it to the database
-                                if(!debug) {
-                                    Intent intent = new Intent("PM_Data");
-                                    intent.putIntegerArrayListExtra("TestData", PMData);
-                                    LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
-                                } else {
-                                    Intent intent = new Intent("PM_Data_Debug");
-                                    intent.putIntegerArrayListExtra("TestData", PMData);
-                                    LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
-                                }
-
-
-                            } catch (NumberFormatException nfe) {
-                                Log.d("DEBUG_BT_PART", "NumberFormatException: " + nfe.getMessage());
+                        //Recibimos PM del sensor
+                        String num = recData.substring(0, recData.length() - 2);
+                        Log.d("DEBUG_BT_PART", "numero " +num);
+                        //Para los nuevos sensores implementar la separación del string en las distintas medidas
+                        // y asignar los valores a PMData
+                        String[] contamination = num.split(" ");
+                        Log.d("DEBUG_BT_PART", "NUMERO "+num+ " numero1Array "+contamination[0]+" tamaño "+contamination.length);
+                        try {
+                            for(int i=0; i<contamination.length; i++) {
+                                PMData.set(i,Integer.parseInt(contamination[i]));
                             }
+                            Log.d("DEBUG_BT_PART", "Array " +PMData.get(0));
+
+                            Log.d("RECORDED", recDataString.toString());
+                            // Do stuff here with your data, like adding it to the database
+                            if(!debug) {
+                                Intent intent = new Intent("PM_Data");
+                                intent.putIntegerArrayListExtra("TestData", PMData);
+                                LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
+                            } else {
+                                Intent intent = new Intent("PM_Data_Debug");
+                                intent.putIntegerArrayListExtra("TestData", PMData);
+                                LocalBroadcastManager.getInstance(mContext).sendBroadcast(intent);
+                            }
+
+
+                        } catch (NumberFormatException nfe) {
+                            Log.d("DEBUG_BT_PART", "NumberFormatException: " + nfe.getMessage());
+                        }
 
                         //}
 
@@ -285,7 +283,7 @@ public class BluetoothService extends Service {
             while (true && !stopThread) {
                 try {
                     Log.d("DEBUG_BT_PART", "CONNECTED THREAD WAITING");
-                    if(pending != ""){
+                    if(!pending.equals("")){
                         mConnectedThread.write(String.valueOf(pending));
                         pending = "";
                         if(duration != 0) {

@@ -51,45 +51,32 @@ public class ChangePasswordActivity extends AppCompatActivity {
                             if (user.getProviderData().get(1).getProviderId().equals("password")) {
                                 credential = EmailAuthProvider
                                         .getCredential(user.getEmail(), actualPwdString);
-                            } else if (user.getProviderData().get(1).getProviderId().equals("google.com")) {
-
-                                /*FirebaseUser mUser = FirebaseAuth.getInstance().getCurrentUser();
-                                mUser.getIdToken(true)
-                                        .addOnCompleteListener(new OnCompleteListener<GetTokenResult>() {
-                                            public void onComplete(@NonNull Task<GetTokenResult> task) {
-                                                if (task.isSuccessful()) {
-                                                    String idToken = task.getResult().getToken();
-                                                    credential = GoogleAuthProvider
-                                                            .getCredential(idToken, null);
-                                                    // Send token to your backend via HTTPS
-                                                    // ...
-                                                } else {
-                                                    // Handle error -> task.getException();
-                                                }
-                                            }
-                                        });*/
                             }
                             user.reauthenticate(credential)
                                     .addOnCompleteListener(new OnCompleteListener<Void>() {
                                         @Override
                                         public void onComplete(@NonNull Task<Void> task) {
                                             if (task.isSuccessful()) {
-                                                Toast.makeText(ChangePasswordActivity.this, "RE-AUTH SUCCED", Toast.LENGTH_SHORT).show();
+                                                Toast.makeText(ChangePasswordActivity.this,
+                                                        "RE-AUTH SUCCED", Toast.LENGTH_SHORT).show();
                                                 user.updatePassword(newPwdString)
                                                         .addOnCompleteListener(new OnCompleteListener<Void>() {
                                                             @Override
                                                             public void onComplete(@NonNull Task<Void> task) {
                                                                 if (task.isSuccessful()) {
-                                                                    Toast.makeText(ChangePasswordActivity.this, "CONTRASEÑA CAMBIADA", Toast.LENGTH_SHORT).show();
+                                                                    Toast.makeText(ChangePasswordActivity.this,
+                                                                            "CONTRASEÑA CAMBIADA", Toast.LENGTH_SHORT).show();
                                                                     finish();
                                                                 } else {
-                                                                    Toast.makeText(ChangePasswordActivity.this, "ERROR, VUELVA A INTENTARLO", Toast.LENGTH_SHORT).show();
+                                                                    Toast.makeText(ChangePasswordActivity.this,
+                                                                            "ERROR, VUELVA A INTENTARLO", Toast.LENGTH_SHORT).show();
 
                                                                 }
                                                             }
                                                         });
                                             } else {
-                                                Toast.makeText(ChangePasswordActivity.this, "RE-AUTH FAILED", Toast.LENGTH_SHORT).show();
+                                                Toast.makeText(ChangePasswordActivity.this,
+                                                        "RE-AUTH FAILED", Toast.LENGTH_SHORT).show();
 
                                             }
 
@@ -97,10 +84,12 @@ public class ChangePasswordActivity extends AppCompatActivity {
                                     });
                         }
                     } else {
-                        Toast.makeText(ChangePasswordActivity.this, "LAS CONTRASEÑAS NO COINCIDEN", Toast.LENGTH_SHORT).show();
+                        Toast.makeText(ChangePasswordActivity.this,
+                                "LAS CONTRASEÑAS NO COINCIDEN", Toast.LENGTH_SHORT).show();
                     }
                 } else {
-                    Toast.makeText(ChangePasswordActivity.this, "INTRODUCE CONTRASEÑAS VÁLIDAS", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(ChangePasswordActivity.this,
+                            "INTRODUCE CONTRASEÑAS VÁLIDAS", Toast.LENGTH_SHORT).show();
                 }
             }
         });

@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:paddingLeft="16dp"
+    android:paddingRight="16dp"
+    android:orientation="vertical" >
+  <ImageView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:src="@mipmap/ic_bicimaps_launcher"
+      android:maxWidth="80dp"
+      android:maxHeight="80dp"
+      android:layout_gravity="center"
+      android:scaleType="fitCenter"
+      android:adjustViewBounds="true"
+      />
+  <TextView
+      android:id="@+id/number_pm"
+      android:layout_width="match_parent"
+      android:layout_height="50dp"
+      android:text="0"
+      android:textSize="40dp"
+      android:gravity="center"/>
+
+  <ProgressBar
+      android:id="@+id/progress_bar"
+      style="@android:style/Widget.ProgressBar.Horizontal"
+      android:layout_width="match_parent"
+      android:layout_height="60dp"
+      android:progress="5"
+      android:max="50"
+      android:progressDrawable="@drawable/custom_progress"
+      />
+  <TextView
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:text="¿Qué ves por el camino?"
+      android:textSize="15sp"
+      android:textColor="@color/colorPrimaryDark"
+      android:gravity="center"/>
+  <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingLeft="16dp"
+      android:paddingRight="16dp"
+      android:gravity="center_horizontal"
+      android:orientation="horizontal" >
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:orientation="vertical" >
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Ambiente"
+          android:layout_gravity="center_horizontal"
+          android:textSize="10sp"
+          android:textColor="@color/colorPrimary"
+          />
+      <CheckBox
+          android:id="@+id/humos"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Humos"
+          android:textSize="10sp"/>
+      <CheckBox
+          android:id="@+id/olor"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Olor"
+          android:textSize="10sp"/>
+    </LinearLayout>
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        >
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Via"
+          android:textColor="@color/colorPrimary"
+          android:layout_gravity="center_horizontal"
+          android:textSize="10sp" />
+      <CheckBox
+          android:id="@+id/obras"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Obras"
+          android:textSize="10sp"/>
+      <CheckBox
+          android:id="@+id/trafico"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Tráfico"
+          android:textSize="10sp"/>
+
+      <CheckBox
+          android:id="@+id/cruce"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Cruce"
+          android:textSize="10sp"/>
+      <CheckBox
+          android:id="@+id/semaforo"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Semáforo"
+          android:textSize="10sp"/>
+      <CheckBox
+          android:id="@+id/vegetacion"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Vegetación"
+          android:textSize="10sp"/>
+    </LinearLayout>
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" >
+      <TextView
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Clima"
+          android:textColor="@color/colorPrimary"
+          android:layout_gravity="center_horizontal"
+          android:textSize="10sp" />
+      <CheckBox
+          android:id="@+id/viento"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Viento"
+          android:textSize="10sp"
+          />
+      <CheckBox
+          android:id="@+id/lluvia"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:text="Lluvia"
+          android:textSize="10sp"/>
+    </LinearLayout>
+  </LinearLayout>
+
+  <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:gravity="center_horizontal"
+      android:orientation="horizontal" >
+    <EditText
+        android:id="@+id/otros"
+        android:layout_width="180dp"
+        android:layout_height="wrap_content"
+        android:hint="Otros"
+        android:textSize="12sp"
+        android:gravity="center_horizontal"/>
+
+    <Button
+        android:id="@+id/btn_otros"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:layout_gravity="center"
+        android:backgroundTint="@color/colorPrimary"
+        android:background="@drawable/ic_flecha"
+        />
+  </LinearLayout>
+
+  <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:paddingLeft="16dp"
+      android:paddingRight="16dp"
+      android:orientation="horizontal" >
+    <TextView
+
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Velocidad:"
+        android:textSize="20dp"
+        />
+    <TextView
+        android:id="@+id/speed"
+        android:layout_width="wrap_content"
+        android:layout_height="50dp"
+        android:text="0"
+        android:textSize="30dp"
+        android:layout_marginHorizontal="20dp"/>
+    <TextView
+
+        android:layout_width="wrap_content"
+        android:layout_height="50dp"
+        android:text="m/s"
+        android:textSize="30dp"
+        />
+  </LinearLayout>
+  <Button
+      android:id="@+id/btn_end"
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:layout_gravity="center"
+      android:backgroundTint="@color/colorPrimary"
+      android:layout_marginTop="10dp"
+      android:text="OK"
+      android:textColor="@color/colorWhite" />
+</LinearLayout>
